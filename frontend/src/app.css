@@ -26,6 +26,36 @@
   }
 }
 
+/* Hover universal para todos os botões */
+button:not(:disabled):not(.menu-item) {
+  transition: box-shadow 0.15s;
+}
+button:not(:disabled):not(.menu-item):hover {
+  box-shadow: inset 0 0 0 100px rgba(0, 0, 0, 0.07);
+}
+
+/* Animações do ícone de notificações do painel admin */
+@keyframes bell-shake {
+  0%,100% { transform: rotate(0deg); }
+  10%     { transform: rotate(14deg); }
+  20%     { transform: rotate(-10deg); }
+  30%     { transform: rotate(10deg); }
+  40%     { transform: rotate(-8deg); }
+  50%     { transform: rotate(6deg); }
+  60%     { transform: rotate(-4deg); }
+  70%     { transform: rotate(2deg); }
+  80%     { transform: rotate(0deg); }
+}
+@keyframes bell-ping {
+  0%   { opacity: 0.6; transform: scale(1); }
+  70%  { opacity: 0;   transform: scale(1.6); }
+  100% { opacity: 0;   transform: scale(1.6); }
+}
+@keyframes bell-ping-dot {
+  0%,100% { transform: scale(1);   opacity: 1; }
+  50%     { transform: scale(1.4); opacity: 0.6; }
+}
+
 /* Scrollbar customizado para o feed de posts */
 .posts-scroll::-webkit-scrollbar {
   width: 4px;

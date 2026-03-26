@@ -4,10 +4,20 @@
   export let items: any[] = [];
   export let cols: { key: string; label: string; badge?: boolean; toggle?: boolean }[] = [];
   export let loading = false;
+  export let dropdownActions = false;
 
   const dispatch = createEventDispatcher();
 
   let selected: Set<string> = new Set();
+  let openDropdownId: string | null = null;
+
+  function toggleDropdown(id: string) {
+    openDropdownId = openDropdownId === id ? null : id;
+  }
+
+  function closeDropdown() {
+    openDropdownId = null;
+  }
 
   $: allSelected = items.length > 0 && items.every(i => selected.has(i.id));
 
@@ -41,14 +51,16 @@
   };
 </script>
 
-<div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden;">
+<svelte:window on:click={closeDropdown} />
+
+<div class="gt-wrap">
   <div style="padding:16px 20px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
     <div style="display:flex;align-items:center;gap:12px;">
       <span style="font-size:13px;font-weight:600;color:#374151;">{items.length} registros</span>
       {#if selected.size > 0}
         <button
           on:click={() => { dispatch('bulkDelete', { ids: [...selected] }); selected = new Set(); }}
-          style="font-size:12px;background:#fef2f2;color:#ef4444;padding:6px 14px;border-radius:4px;border:1px solid #fecaca;cursor:pointer;font-weight:600;"
+          style="font-size:12px;background:rgba(239,68,68,0.08);color:#ef4444;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-weight:600;"
         >
           Excluir selecionados ({selected.size})
         </button>
@@ -56,7 +68,7 @@
     </div>
     <button
       on:click={() => dispatch('new')}
-      style="font-size:12px;background:#7b0000;color:#fff;padding:6px 14px;border-radius:4px;border:none;cursor:pointer;"
+      style="font-size:12px;background:rgba(123,0,0,0.08);color:#7b0000;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-weight:600;"
     >
       + Novo
     </button>
@@ -83,7 +95,7 @@
               {col.label}
             </th>
           {/each}
-          <th style="text-align:right;padding:10px 20px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Ações</th>
+          <th style="{dropdownActions ? 'text-align:center;width:60px;' : 'text-align:right;'}padding:10px 20px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -114,24 +126,63 @@
                     color:{tipoBadgeColor[item[col.key]] ?? '#6b7280'};">
                     {item[col.key]}
                   </span>
+                {:else if col.key.endsWith('_em')}
+                  {#if item[col.key]}
+                    <span style="font-size:12px;color:#374151;">
+                      {new Date(String(item[col.key]).replace(' ', 'T')).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+                    </span>
+                  {:else}
+                    <span style="font-size:12px;color:#9ca3af;">—</span>
+                  {/if}
                 {:else}
                   {item[col.key] ?? '—'}
                 {/if}
               </td>
             {/each}
-            <td style="padding:12px 20px;text-align:right;">
-              <button
-                on:click={() => dispatch('edit', item)}
-                style="font-size:12px;color:#7b0000;background:none;border:none;cursor:pointer;margin-right:12px;font-weight:500;"
-              >
-                Editar
-              </button>
-              <button
-                on:click={() => dispatch('delete', { id: item.id, nome: item.titulo ?? item.nome ?? item.name ?? item.id })}
-                style="font-size:12px;color:#ef4444;background:none;border:none;cursor:pointer;"
-              >
-                Excluir
-              </button>
+            <td style="padding:12px 20px;{dropdownActions ? 'text-align:center;' : 'text-align:right;'}">
+              {#if dropdownActions}
+                <div style="position:relative;display:inline-block;">
+                  <button
+                    on:click|stopPropagation={() => toggleDropdown(item.id)}
+                    style="font-size:18px;line-height:1;color:#6b7280;background:rgba(107,114,128,0.08);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;"
+                  >
+                    ⋮
+                  </button>
+                  {#if openDropdownId === item.id}
+                    <div style="position:absolute;right:0;top:34px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:130px;z-index:50;overflow:hidden;">
+                      <button
+                        on:click={() => { closeDropdown(); dispatch('edit', item); }}
+                        style="display:block;width:100%;text-align:left;padding:9px 14px;font-size:13px;color:#1f2937;background:none;border:none;cursor:pointer;"
+                        on:mouseenter={(e) => e.currentTarget.style.background='#f9fafb'}
+                        on:mouseleave={(e) => e.currentTarget.style.background='none'}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        on:click={() => { closeDropdown(); dispatch('delete', { id: item.id, nome: item.titulo ?? item.nome ?? item.name ?? item.id }); }}
+                        style="display:block;width:100%;text-align:left;padding:9px 14px;font-size:13px;color:#ef4444;background:none;border:none;cursor:pointer;border-top:1px solid #f3f4f6;"
+                        on:mouseenter={(e) => e.currentTarget.style.background='#fef2f2'}
+                        on:mouseleave={(e) => e.currentTarget.style.background='none'}
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+              {:else}
+                <button
+                  on:click={() => dispatch('edit', item)}
+                  style="font-size:12px;color:#7b0000;background:rgba(123,0,0,0.08);border:none;border-radius:8px;cursor:pointer;margin-right:8px;font-weight:600;padding:5px 12px;"
+                >
+                  Editar
+                </button>
+                <button
+                  on:click={() => dispatch('delete', { id: item.id, nome: item.titulo ?? item.nome ?? item.name ?? item.id })}
+                  style="font-size:12px;color:#ef4444;background:rgba(239,68,68,0.08);border:none;border-radius:8px;cursor:pointer;font-weight:600;padding:5px 12px;"
+                >
+                  Excluir
+                </button>
+              {/if}
             </td>
           </tr>
         {/each}
@@ -139,3 +190,21 @@
     </table>
   {/if}
 </div>
+
+<style>
+  .gt-wrap {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    overflow: visible;
+    position: relative;
+  }
+
+  /* Arredonda os cantos superiores via thead */
+  .gt-wrap :global(thead tr th:first-child) { border-radius: 8px 0 0 0; }
+  .gt-wrap :global(thead tr th:last-child)  { border-radius: 0 8px 0 0; }
+
+  /* Arredonda os cantos inferiores na última linha */
+  .gt-wrap :global(tbody tr:last-child td:first-child) { border-radius: 0 0 0 8px; }
+  .gt-wrap :global(tbody tr:last-child td:last-child)  { border-radius: 0 0 8px 0; }
+</style>

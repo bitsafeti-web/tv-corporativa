@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
 
   export let datas: any[] = [];
+  export let showLegend = true;
 
   const dispatch = createEventDispatcher();
 
@@ -57,17 +58,17 @@
   }
 </script>
 
-<div style="background:#fff;border-radius:10px;border:1px solid #e5e7eb;overflow:hidden;">
+<div style="background:#fff;border:1px solid #e5e7eb;overflow:hidden;">
 
   <!-- cabeçalho do mês -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f3f4f6;">
     <button on:click={prevMes}
-      style="background:none;border:1px solid #e5e7eb;border-radius:6px;width:30px;height:30px;cursor:pointer;color:#6b7280;font-size:16px;">
+      style="background:rgba(107,114,128,0.08);border:none;border-radius:0;width:30px;height:30px;cursor:pointer;color:#6b7280;font-size:16px;">
       ‹
     </button>
     <span style="font-size:14px;font-weight:600;color:#111;">{MESES[mes]} {ano}</span>
     <button on:click={nextMes}
-      style="background:none;border:1px solid #e5e7eb;border-radius:6px;width:30px;height:30px;cursor:pointer;color:#6b7280;font-size:16px;">
+      style="background:rgba(107,114,128,0.08);border:none;border-radius:0;width:30px;height:30px;cursor:pointer;color:#6b7280;font-size:16px;">
       ›
     </button>
   </div>
@@ -95,13 +96,13 @@
           on:click={() => clickDia(dia, eventos)}
           style="
             display:flex;flex-direction:column;align-items:center;justify-content:center;
-            padding:6px 2px;border-radius:8px;border:none;min-height:44px;
+            padding:6px 2px;border-radius:0;border:none;min-height:44px;
             background:{eHoje ? '#7b0000' : eventos.length > 0 ? '#fff7f7' : 'transparent'};
             color:{eHoje ? '#fff' : '#1f2937'};
             cursor:{eventos.length > 0 ? 'pointer' : 'default'};
             transition:background .15s;
           "
-          title={eventos.map((e: any) => e.titulo).join(', ')}
+          title={eventos.map(e => e.titulo).join(', ')}
         >
           <span style="font-size:13px;font-weight:{eHoje ? 700 : eventos.length > 0 ? 600 : 400};">
             {dia}
@@ -118,23 +119,25 @@
     </div>
   </div>
 
-  <!-- legenda: datas do mês -->
-  {#if datasDoMes.length > 0}
-    <div style="border-top:1px solid #f3f4f6;padding:12px 16px;display:flex;flex-direction:column;gap:8px;">
-      {#each datasDoMes as ev}
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="width:10px;height:10px;border-radius:50%;background:{ev.cor || '#7b0000'};flex-shrink:0;"></span>
-          <span style="font-size:12px;font-weight:700;color:{ev.cor || '#7b0000'};">{ev.data.slice(8,10)}</span>
-          <span style="font-size:12px;font-weight:600;color:#374151;">{ev.titulo}</span>
-          {#if ev.descricao}
-            <span style="font-size:11px;color:#9ca3af;">— {ev.descricao}</span>
-          {/if}
-          {#if !ev.ativo}
-            <span style="font-size:10px;background:#f1f5f9;color:#94a3b8;padding:1px 6px;border-radius:99px;margin-left:auto;">inativo</span>
-          {/if}
-        </div>
-      {/each}
-    </div>
+  <!-- legenda: datas do mês (apenas quando showLegend=true) -->
+  {#if showLegend}
+    {#if datasDoMes.length > 0}
+      <div style="border-top:1px solid #f3f4f6;padding:12px 16px;display:flex;flex-direction:column;gap:8px;">
+        {#each datasDoMes as ev}
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:{ev.cor || '#7b0000'};flex-shrink:0;"></span>
+            <span style="font-size:12px;font-weight:700;color:{ev.cor || '#7b0000'};">{ev.data.slice(8,10)}</span>
+            <span style="font-size:12px;font-weight:600;color:#374151;">{ev.titulo}</span>
+            {#if ev.descricao}
+              <span style="font-size:11px;color:#9ca3af;">— {ev.descricao}</span>
+            {/if}
+            {#if !ev.ativo}
+              <span style="font-size:10px;background:#f1f5f9;color:#94a3b8;padding:1px 6px;border-radius:99px;margin-left:auto;">inativo</span>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
   {/if}
 
 </div>

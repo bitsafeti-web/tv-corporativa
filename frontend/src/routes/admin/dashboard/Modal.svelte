@@ -19,7 +19,7 @@
     >
       <div style="padding:20px 24px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;">
         <h2 style="margin:0;font-size:15px;font-weight:600;color:#111;">{title}</h2>
-        <button on:click={close} style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
+        <button on:click={close} style="background:rgba(107,114,128,0.08);border:none;border-radius:8px;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">×</button>
       </div>
       <div style="padding:24px;">
         <slot />

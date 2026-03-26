@@ -51,13 +51,13 @@
         <div style="display:flex;justify-content:flex-end;gap:10px;">
           <button
             on:click={cancel}
-            style="font-size:13px;font-weight:500;padding:8px 18px;border-radius:6px;border:1px solid #e5e7eb;background:#fff;color:#374151;cursor:pointer;"
+            style="font-size:13px;font-weight:600;padding:8px 18px;border-radius:8px;border:none;background:rgba(107,114,128,0.08);color:#374151;cursor:pointer;"
           >
             {cancelLabel}
           </button>
           <button
             on:click={confirm}
-            style="font-size:13px;font-weight:600;padding:8px 18px;border-radius:6px;border:none;background:#7b0000;color:#fff;cursor:pointer;"
+            style="font-size:13px;font-weight:600;padding:8px 18px;border-radius:8px;border:none;background:rgba(123,0,0,0.08);color:#7b0000;cursor:pointer;"
           >
             {confirmLabel}
           </button>

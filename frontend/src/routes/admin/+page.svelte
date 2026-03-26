@@ -84,7 +84,7 @@
       <button
         on:click={login}
         disabled={loading}
-        style="display:block; width:100%; padding:14px; background-color:#7b0000; color:#fff; font-size:15px; font-weight:600; border:none; border-radius:4px; cursor:pointer; font-family:sans-serif; opacity:{loading ? 0.7 : 1};"
+        style="display:block; width:100%; padding:14px; background:rgba(123,0,0,0.08); color:#7b0000; font-size:15px; font-weight:600; border:none; border-radius:8px; cursor:pointer; font-family:sans-serif; opacity:{loading ? 0.7 : 1};"
       >
         {loading ? 'Entrando...' : 'Entrar'}
       </button>

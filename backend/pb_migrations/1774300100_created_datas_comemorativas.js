@@ -1,5 +1,11 @@
 /// <reference path="../pb_data/types.d.ts" />
 migrate((app) => {
+  // Remove a versão antiga criada pela migration 1774292426
+  try {
+    const old = app.findCollectionByNameOrId("DatasComemorativas");
+    app.delete(old);
+  } catch (_) {}
+
   const collection = new Collection({
     "id": "pbc_datas_comemorativas",
     "name": "DatasComemorativas",

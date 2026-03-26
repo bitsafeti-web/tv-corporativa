@@ -52,17 +52,18 @@
   let formError = '';
 
   // forms
-  let fBoletim   = { titulo: '', ordem: 0, ativo: true };
+  let fBoletim   = { titulo: '', ordem: 0, ativo: true, publica_em: '', expira_em: '' };
   let fCampanha  = { titulo: '', ativo: true, imagem: null as File | null, imagemAtual: '', imagemErro: '', publica_em: '', expira_em: '', previewUrl: '', collectionId: '', recordId: '' };
   let fDestaque  = { titulo: '', ativo: true, expira_em: '', publica_em: '' };
-  let fUsuario   = { name: '', email: '', password: '' };
+  let fUsuario   = { name: '', email: '', password: '', whatsapp_numero: '', whatsapp_notificar: false };
   let fData = { titulo: '', data: '', descricao: '', ativo: true, antecedencia_dias: 7, cor: '#7b0000' };
 
   let fConfig    = {
     nome_empresa: '', cidade: '', pais: '', fuso_horario: '',
     weather_api_key: '', google_api_key: '', google_calendar_id: '',
     modo_manutencao: false, mensagem_manutencao: '',
-    ticker_ativo: false, ticker_texto: ''
+    ticker_ativo: false, ticker_texto: '',
+    api_token: ''
   };
 
   // selects de configurações
@@ -127,11 +128,11 @@
   function openNew(sec: Section) {
     editingId = null;
     formError = '';
-    if (sec === 'boletins')     fBoletim  = { titulo: '', ordem: boletins.length + 1, ativo: true };
+    if (sec === 'boletins')     fBoletim  = { titulo: '', ordem: boletins.length + 1, ativo: true, publica_em: '', expira_em: '' };
     if (sec === 'campanha')     fCampanha = { titulo: '', ativo: true, imagem: null, imagemAtual: '', imagemErro: '', publica_em: '', expira_em: '', previewUrl: '', collectionId: '', recordId: '' };
     if (sec === 'destaque')     fDestaque = { titulo: '', ativo: true, expira_em: '', publica_em: '' };
     if (sec === 'calendario')   fData     = { titulo: '', data: '', descricao: '', ativo: true, antecedencia_dias: 7, cor: '#7b0000' };
-    if (sec === 'usuarios')     fUsuario  = { name: '', email: '', password: '' };
+    if (sec === 'usuarios')     fUsuario  = { name: '', email: '', password: '', whatsapp_numero: '', whatsapp_notificar: false };
     if (sec === 'configuracoes' && config) loadConfigForm();
     modalTitle = `Novo — ${menu.find(m=>m.id===sec)?.label}`;
     modalOpen = true;
@@ -140,7 +141,7 @@
   function openEdit(sec: Section, item: any) {
     editingId = item.id;
     formError = '';
-    if (sec === 'boletins')     fBoletim  = { titulo: item.titulo, ordem: item.ordem ?? 0, ativo: item.ativo };
+    if (sec === 'boletins')     fBoletim  = { titulo: item.titulo, ordem: item.ordem ?? 0, ativo: item.ativo, publica_em: item.publica_em ? item.publica_em.slice(0,16) : '', expira_em: item.expira_em ? item.expira_em.slice(0,16) : '' };
     if (sec === 'campanha') {
       const filename = item.imagem_1568x876px ?? '';
       const colId    = item.collectionId ?? '';
@@ -150,7 +151,7 @@
     }
     if (sec === 'destaque')     fDestaque = { titulo: item.titulo, ativo: item.ativo, expira_em: item.expira_em ? item.expira_em.slice(0,16) : '', publica_em: item.publica_em ? item.publica_em.slice(0,16) : '' };
     if (sec === 'calendario')   fData     = { titulo: item.titulo, data: item.data ? item.data.slice(0,10) : '', descricao: item.descricao ?? '', ativo: item.ativo, antecedencia_dias: item.antecedencia_dias ?? 7, cor: item.cor || '#7b0000' };
-    if (sec === 'usuarios')     fUsuario  = { name: item.name, email: item.email, password: '' };
+    if (sec === 'usuarios')     fUsuario  = { name: item.name, email: item.email, password: '', whatsapp_numero: item.whatsapp_numero ?? '', whatsapp_notificar: item.whatsapp_notificar ?? false };
     if (sec === 'configuracoes') loadConfigForm();
     modalTitle = `Editar — ${menu.find(m=>m.id===sec)?.label}`;
     modalOpen = true;
@@ -170,6 +171,7 @@
       mensagem_manutencao: config.mensagem_manutencao ?? '',
       ticker_ativo: config.ticker_ativo ?? false,
       ticker_texto: config.ticker_texto ?? '',
+      api_token: config.api_token ?? '',
     };
     editingId = config.id;
   }
@@ -207,13 +209,19 @@
     }
   }
 
+  // Converte "2026-03-25T17:30" (datetime-local) para "2026-03-25 17:30:00.000Z" (PocketBase)
+  function toDbDate(v: string): string | null {
+    if (!v) return null;
+    return v.replace('T', ' ') + ':00.000Z';
+  }
+
   // ── save ──────────────────────────────────────────────────
   async function save(sec: Section) {
     saving = true;
     formError = '';
     try {
       if (sec === 'boletins') {
-        const data = { titulo: fBoletim.titulo, ordem: Number(fBoletim.ordem), ativo: fBoletim.ativo };
+        const data: any = { titulo: fBoletim.titulo, ordem: Number(fBoletim.ordem), ativo: fBoletim.ativo, publica_em: toDbDate(fBoletim.publica_em), expira_em: toDbDate(fBoletim.expira_em) };
         editingId ? await pb.collection('Boletins').update(editingId, data)
                   : await pb.collection('Boletins').create(data);
       }
@@ -227,8 +235,8 @@
           const fd = new FormData();
           fd.append('titulo', fCampanha.titulo);
           fd.append('ativo', fCampanha.ativo ? 'true' : 'false');
-          if (fCampanha.publica_em) fd.append('publica_em', fCampanha.publica_em);
-          if (fCampanha.expira_em)  fd.append('expira_em',  fCampanha.expira_em);
+          if (fCampanha.publica_em) fd.append('publica_em', toDbDate(fCampanha.publica_em)!);
+          if (fCampanha.expira_em)  fd.append('expira_em',  toDbDate(fCampanha.expira_em)!);
           fd.append('imagem_1568x876px', fCampanha.imagem);
           editingId ? await pb.collection('Campanha').update(editingId, fd)
                     : await pb.collection('Campanha').create(fd);
@@ -238,8 +246,8 @@
             titulo: fCampanha.titulo,
             ativo: fCampanha.ativo,
           };
-          if (fCampanha.publica_em) data.publica_em = fCampanha.publica_em;
-          if (fCampanha.expira_em)  data.expira_em  = fCampanha.expira_em;
+          if (fCampanha.publica_em) data.publica_em = toDbDate(fCampanha.publica_em);
+          if (fCampanha.expira_em)  data.expira_em  = toDbDate(fCampanha.expira_em);
           editingId ? await pb.collection('Campanha').update(editingId, data)
                     : await pb.collection('Campanha').create(data);
         }
@@ -247,15 +255,15 @@
 
       else if (sec === 'destaque') {
         const data: any = { titulo: fDestaque.titulo, ativo: fDestaque.ativo };
-        if (fDestaque.expira_em)  data.expira_em  = fDestaque.expira_em;
-        if (fDestaque.publica_em) data.publica_em = fDestaque.publica_em;
+        if (fDestaque.expira_em)  data.expira_em  = toDbDate(fDestaque.expira_em);
+        if (fDestaque.publica_em) data.publica_em = toDbDate(fDestaque.publica_em);
         editingId ? await pb.collection('Destaque').update(editingId, data)
                   : await pb.collection('Destaque').create(data);
       }
 
       else if (sec === 'usuarios') {
         if (editingId) {
-          const data: any = { name: fUsuario.name, email: fUsuario.email };
+          const data: any = { name: fUsuario.name, email: fUsuario.email, whatsapp_numero: fUsuario.whatsapp_numero, whatsapp_notificar: fUsuario.whatsapp_notificar };
           if (fUsuario.password) { data.password = fUsuario.password; data.passwordConfirm = fUsuario.password; }
           await pb.collection('Usuarios').update(editingId, data);
         } else {
@@ -320,6 +328,25 @@
 
   function logout() { pb.authStore.clear(); goto('/admin'); }
 
+  // ── avisos do calendário ──────────────────────────────────
+  let avisoOpen = false;
+
+  $: datasProximas = (() => {
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    return datas.filter(d => {
+      if (!d.ativo || !d.data) return false;
+      const data = new Date(d.data); data.setHours(0,0,0,0);
+      const diff = Math.ceil((data.getTime() - hoje.getTime()) / 86_400_000);
+      return diff >= 0 && diff <= (d.antecedencia_dias ?? 7);
+    }).sort((a: any, b: any) => a.data.localeCompare(b.data));
+  })();
+
+  function diasRestantes(iso: string): number {
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const d = new Date(iso); d.setHours(0,0,0,0);
+    return Math.ceil((d.getTime() - hoje.getTime()) / 86_400_000);
+  }
+
   const icons: Record<string, string> = {
     dashboard:    `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`,
     campanha:     `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>`,
@@ -344,7 +371,7 @@
   // ── estilos de input reutilizáveis ────────────────────────
   const inp = 'display:block;width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;color:#111;margin-bottom:14px;';
   const lbl = 'display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;';
-  const btn = 'padding:9px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;';
+  const btn = 'padding:9px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;';
 </script>
 
 <svelte:head><title>TV Corporativa — Painel</title></svelte:head>
@@ -353,25 +380,21 @@
 
   <!-- SIDEBAR -->
   <aside style="width:220px;background:#7b0000;display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;">
-    <div style="padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,0.1);">
-      <img src="/bitsafe-branco.png" alt="Bitsafe" style="height:36px;object-fit:contain;" />
-      <p style="color:rgba(255,255,255,0.6);font-size:11px;margin:6px 0 0;">TV Corporativa</p>
+    <div style="padding:12px 20px 12px 23px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:flex-start;">
+      <img src="/bitsafe-branco.png" alt="Bitsafe" style="height:68px;object-fit:contain;" />
     </div>
     <nav style="flex:1;padding:12px 0;overflow-y:auto;">
       {#each menu as item}
         <button
           on:click={() => section = item.id}
-          style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 20px;border:none;cursor:pointer;
-            background:{section===item.id?'rgba(255,255,255,0.15)':'transparent'};
-            color:#fff;
-            font-size:13px;font-weight:{section===item.id?'600':'400'};
-            border-left:{section===item.id?'3px solid #fff':'3px solid transparent'};
-            text-align:left;box-sizing:border-box;"
+          class="menu-item"
+          class:menu-item--active={section===item.id}
+          style="font-weight:{section===item.id?'600':'400'};"
         >
-          <span style="display:flex;align-items:center;width:18px;flex-shrink:0;opacity:{section===item.id?1:0.65};">
+          <span class="menu-icon" class:menu-icon--active={section===item.id}>
             {@html icons[item.id]}
           </span>
-          <span style="opacity:{section===item.id?1:0.7};">{item.label}</span>
+          <span class:menu-label--active={section===item.id}>{item.label}</span>
         </button>
       {/each}
     </nav>
@@ -385,33 +408,180 @@
 
   <!-- CONTEÚDO -->
   <main style="flex:1;background:#f4f4f5;overflow:auto;">
-    <div style="background:#fff;border-bottom:1px solid #e5e7eb;padding:14px 28px;position:sticky;top:0;z-index:10;">
+    <div style="background:#fff;border-bottom:1px solid #e5e7eb;padding:14px 28px;position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;">
       <h1 style="font-size:15px;font-weight:600;color:#111827;margin:0;">
         {menu.find(m=>m.id===section)?.label}
       </h1>
+
+      <!-- Ícone de avisos do calendário -->
+      <div style="position:relative;">
+        <button
+          on:click={() => avisoOpen = !avisoOpen}
+          style="position:relative;background:none;border:none;cursor:pointer;padding:6px;border-radius:8px;
+            background:{avisoOpen ? '#f9fafb' : 'none'};display:flex;align-items:center;"
+          title="Avisos do calendário"
+        >
+          {#if datasProximas.length > 0}
+            <!-- anel de ping externo -->
+            <span style="position:absolute;inset:0;border-radius:8px;
+              background:rgba(123,0,0,0.12);animation:bell-ping 1.8s ease-in-out infinite;"></span>
+          {/if}
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke={datasProximas.length > 0 ? '#7b0000' : '#9ca3af'}
+            stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+            style={datasProximas.length > 0 ? 'animation:bell-shake 1.8s ease-in-out infinite;' : ''}>
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          {#if datasProximas.length > 0}
+            <span style="position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;
+              background:#7b0000;border:2px solid #fff;animation:bell-ping-dot 1.8s ease-in-out infinite;"></span>
+          {/if}
+        </button>
+
+        <!-- Popover -->
+        {#if avisoOpen}
+          <!-- fechar ao clicar fora -->
+          <div on:click={() => avisoOpen = false}
+            style="position:fixed;inset:0;z-index:49;"></div>
+
+          <div style="position:absolute;right:0;top:calc(100% + 8px);width:320px;
+            background:#fff;border-radius:10px;border:1px solid #e5e7eb;
+            box-shadow:0 12px 40px rgba(0,0,0,0.12);z-index:50;overflow:hidden;">
+
+            <!-- cabeçalho -->
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:13px;font-weight:600;color:#111;">Avisos do calendário</span>
+              {#if datasProximas.length > 0}
+                <span style="font-size:11px;font-weight:600;background:#fff0f0;color:#7b0000;
+                  padding:2px 8px;border-radius:99px;">{datasProximas.length} próxima{datasProximas.length > 1 ? 's' : ''}</span>
+              {/if}
+            </div>
+
+            <!-- lista -->
+            {#if datasProximas.length === 0}
+              <div style="padding:28px 16px;text-align:center;">
+                <p style="font-size:13px;color:#9ca3af;margin:0;">Nenhuma data comemorativa próxima.</p>
+              </div>
+            {:else}
+              <div style="max-height:320px;overflow-y:auto;">
+                {#each datasProximas as d}
+                  {@const dias = diasRestantes(d.data)}
+                  <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid #f9fafb;">
+                    <span style="width:10px;height:10px;border-radius:50%;background:{d.cor||'#7b0000'};flex-shrink:0;"></span>
+                    <div style="flex:1;min-width:0;">
+                      <p style="margin:0;font-size:13px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{d.titulo}</p>
+                      <p style="margin:2px 0 0;font-size:11px;color:#9ca3af;">
+                        {new Date(d.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'long'})}
+                      </p>
+                    </div>
+                    <span style="font-size:11px;font-weight:700;white-space:nowrap;
+                      color:{dias === 0 ? '#7b0000' : dias <= 3 ? '#f97316' : '#6b7280'};">
+                      {dias === 0 ? 'Hoje' : dias === 1 ? 'Amanhã' : `Em ${dias} dias`}
+                    </span>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+
+            <!-- rodapé -->
+            <div style="padding:10px 16px;border-top:1px solid #f3f4f6;">
+              <button on:click={() => { section = 'calendario'; avisoOpen = false; }}
+                style="font-size:12px;color:#7b0000;background:none;border:none;cursor:pointer;font-weight:500;padding:0;">
+                Ver todos no calendário →
+              </button>
+            </div>
+          </div>
+        {/if}
+      </div>
     </div>
 
     <div style="padding:28px;">
 
       <!-- DASHBOARD -->
       {#if section === 'dashboard'}
+
+        <!-- Cards de contagem -->
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;">
           {#each [
-            {label:'Usuários',  value:usuarios.length,  color:'#7b0000'},
-            {label:'Boletins',  value:boletins.length,  color:'#0369a1'},
-            {label:'Campanhas', value:campanhas.length, color:'#7c3aed'},
-            {label:'Destaques', value:destaques.length, color:'#f97316'},
+            {label:'Campanhas', value:campanhas.length, color:'#7c3aed', sec:'campanha',
+              icon:'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>'},
+            {label:'Boletins',  value:boletins.length,  color:'#0369a1', sec:'boletins',
+              icon:'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>'},
+            {label:'Destaques', value:destaques.length, color:'#f97316', sec:'destaque',
+              icon:'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'},
+            {label:'Usuários',  value:usuarios.length,  color:'#7b0000', sec:'usuarios',
+              icon:'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'},
           ] as card}
-            <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;padding:20px;">
-              <p style="font-size:12px;color:#6b7280;margin:0 0 6px;">{card.label}</p>
-              <p style="font-size:28px;font-weight:700;color:{card.color};margin:0;">{card.value}</p>
+            <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;padding:20px;display:flex;flex-direction:column;gap:10px;">
+              <p style="font-size:12px;color:#6b7280;margin:0;">{card.label}</p>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <p style="font-size:28px;font-weight:700;color:{card.color};margin:0;line-height:1;">{card.value}</p>
+                <span style="color:{card.color};opacity:.7;flex-shrink:0;">{@html card.icon}</span>
+              </div>
             </div>
           {/each}
         </div>
+
+        <!-- Card Calendário — segundo card -->
+        <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden;margin-bottom:28px;">
+          <div style="padding:16px 20px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:13px;font-weight:600;color:#374151;">Calendário de datas comemorativas</span>
+            <button on:click={() => section = 'calendario'}
+              style="font-size:12px;color:#7b0000;background:rgba(123,0,0,0.08);border:none;cursor:pointer;font-weight:600;padding:5px 12px;border-radius:8px;">
+              Gerenciar →
+            </button>
+          </div>
+          <div style="display:grid;grid-template-columns:420px 1fr;min-height:320px;">
+            <div style="border-right:1px solid #f3f4f6;">
+              <CalendarGrid {datas} showLegend={false} />
+            </div>
+            <div style="display:flex;flex-direction:column;">
+              <!-- cabeçalho colunas -->
+              <div style="display:grid;grid-template-columns:1fr 140px 100px 80px;padding:8px 20px;background:#f9fafb;border-bottom:1px solid #f3f4f6;">
+                <span style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;">Título</span>
+                <span style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;">Data</span>
+                <span style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;">Antecedência</span>
+                <span style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;">Status</span>
+              </div>
+              {#if datas.length === 0}
+                <p style="padding:40px;text-align:center;color:#9ca3af;font-size:13px;">Nenhuma data cadastrada.</p>
+              {:else}
+                {#each datas.sort((a,b) => a.data.localeCompare(b.data)) as d}
+                  <div style="display:grid;grid-template-columns:1fr 140px 100px 80px;align-items:center;padding:11px 20px;border-bottom:1px solid #f9fafb;">
+                    <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                      <span style="width:8px;height:8px;border-radius:50%;background:{d.cor||'#7b0000'};flex-shrink:0;"></span>
+                      <span style="font-size:13px;font-weight:500;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{d.titulo}</span>
+                    </div>
+                    <span style="font-size:12px;color:#6b7280;">
+                      {d.data ? new Date(d.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '—'}
+                    </span>
+                    <span style="font-size:12px;color:#6b7280;">{d.antecedencia_dias ?? 7}d antes</span>
+                    <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;display:inline-block;
+                      background:{d.ativo?'#dcfce7':'#f1f5f9'};color:{d.ativo?'#16a34a':'#94a3b8'};">
+                      {d.ativo?'Ativo':'Inativo'}
+                    </span>
+                  </div>
+                {/each}
+              {/if}
+            </div>
+          </div>
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr;gap:20px;">
-          {#each [{label:'Últimas campanhas',items:campanhas},{label:'Últimos destaques',items:destaques},{label:'Últimos boletins',items:boletins}] as bloco}
+          {#each [
+            {label:'Últimas campanhas', items:campanhas, sec:'campanha'},
+            {label:'Últimos boletins',  items:boletins,  sec:'boletins'},
+            {label:'Últimos destaques', items:destaques, sec:'destaque'},
+          ] as bloco}
             <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden;">
-              <div style="padding:16px 20px;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:600;color:#374151;">{bloco.label}</div>
+              <div style="padding:16px 20px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:13px;font-weight:600;color:#374151;">{bloco.label}</span>
+                <button on:click={() => section = bloco.sec}
+                  style="font-size:12px;color:#7b0000;background:rgba(123,0,0,0.08);border:none;cursor:pointer;font-weight:600;padding:5px 12px;border-radius:8px;">
+                  Gerenciar →
+                </button>
+              </div>
               <!-- cabeçalho colunas -->
               <div style="display:grid;grid-template-columns:1fr 140px 140px 80px;padding:8px 20px;background:#f9fafb;border-bottom:1px solid #f3f4f6;">
                 <span style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;">Título</span>
@@ -442,8 +612,8 @@
 
       <!-- BOLETINS -->
       {:else if section === 'boletins'}
-        <GenericTable {loading} items={boletins}
-          cols={[{key:'titulo',label:'Título'},{key:'ordem',label:'Ordem'},{key:'ativo',label:'Status',toggle:true}]}
+        <GenericTable {loading} items={boletins} dropdownActions
+          cols={[{key:'titulo',label:'Título'},{key:'ordem',label:'Ordem'},{key:'publica_em',label:'Postagem'},{key:'expira_em',label:'Expiração'},{key:'ativo',label:'Status',toggle:true}]}
           on:new={() => openNew('boletins')}
           on:edit={(e) => openEdit('boletins', e.detail)}
           on:toggle={(e) => handleToggle('Boletins', e)}
@@ -453,8 +623,8 @@
 
       <!-- CAMPANHA -->
       {:else if section === 'campanha'}
-        <GenericTable {loading} items={campanhas}
-          cols={[{key:'titulo',label:'Título'},{key:'ativo',label:'Status',toggle:true}]}
+        <GenericTable {loading} items={campanhas} dropdownActions
+          cols={[{key:'titulo',label:'Título'},{key:'publica_em',label:'Postagem'},{key:'expira_em',label:'Expiração'},{key:'ativo',label:'Status',toggle:true}]}
           on:new={() => openNew('campanha')}
           on:edit={(e) => openEdit('campanha', e.detail)}
           on:toggle={(e) => handleToggle('Campanha', e)}
@@ -464,8 +634,8 @@
 
       <!-- DESTAQUE -->
       {:else if section === 'destaque'}
-        <GenericTable {loading} items={destaques}
-          cols={[{key:'titulo',label:'Título'},{key:'expira_em',label:'Expira em'},{key:'ativo',label:'Status',toggle:true}]}
+        <GenericTable {loading} items={destaques} dropdownActions
+          cols={[{key:'titulo',label:'Título'},{key:'publica_em',label:'Postagem'},{key:'expira_em',label:'Expiração'},{key:'ativo',label:'Status',toggle:true}]}
           on:new={() => openNew('destaque')}
           on:edit={(e) => openEdit('destaque', e.detail)}
           on:toggle={(e) => handleToggle('Destaque', e)}
@@ -480,7 +650,7 @@
           <CalendarGrid {datas} />
 
           <!-- Lista -->
-          <GenericTable {loading} items={datas}
+          <GenericTable {loading} items={datas} dropdownActions
             cols={[{key:'titulo',label:'Título'},{key:'data',label:'Data'},{key:'antecedencia_dias',label:'Antecedência (dias)'},{key:'ativo',label:'Status',toggle:true}]}
             on:new={() => openNew('calendario')}
             on:edit={(e) => openEdit('calendario', e.detail)}
@@ -492,11 +662,14 @@
 
       <!-- USUÁRIOS -->
       {:else if section === 'usuarios'}
-        <GenericTable {loading} items={usuarios}
-          cols={[{key:'name',label:'Nome'},{key:'email',label:'E-mail'}]}
+        <GenericTable {loading} items={usuarios} dropdownActions
+          cols={[
+            {key:'name',  label:'Nome'},
+            {key:'email', label:'E-mail'},
+            {key:'whatsapp_numero', label:'WhatsApp'},
+          ]}
           on:new={() => openNew('usuarios')}
           on:edit={(e) => openEdit('usuarios', e.detail)}
-          on:toggle={(e) => handleToggle('Usuarios', e)}
           on:delete={(e) => handleDelete('Usuarios', e)}
         />
 
@@ -543,13 +716,17 @@
   <input bind:value={fBoletim.titulo} style={inp} placeholder="Título do boletim" />
   <label style={lbl}>Ordem</label>
   <input type="number" bind:value={fBoletim.ordem} style={inp} />
+  <label style={lbl}>Publica em</label>
+  <input type="datetime-local" bind:value={fBoletim.publica_em} style={inp} />
+  <label style={lbl}>Expira em</label>
+  <input type="datetime-local" bind:value={fBoletim.expira_em} style={inp} />
   <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;margin-bottom:20px;cursor:pointer;">
     <input type="checkbox" bind:checked={fBoletim.ativo} style="accent-color:#7b0000;" /> Ativo
   </label>
   {#if formError}<p style="color:#ef4444;font-size:12px;margin-bottom:12px;">{formError}</p>{/if}
   <div style="display:flex;gap:10px;justify-content:flex-end;">
-    <button on:click={closeModal} style="{btn}background:#f3f4f6;color:#374151;">Cancelar</button>
-    <button on:click={() => save('boletins')} disabled={saving} style="{btn}background:#7b0000;color:#fff;opacity:{saving?0.7:1};">
+    <button on:click={closeModal} style="{btn}background:rgba(107,114,128,0.08);color:#374151;">Cancelar</button>
+    <button on:click={() => save('boletins')} disabled={saving} style="{btn}background:rgba(123,0,0,0.08);color:#7b0000;opacity:{saving?0.7:1};">
       {saving?'Salvando...':'Salvar'}
     </button>
   </div>
@@ -595,8 +772,8 @@
   </label>
   {#if formError}<p style="color:#ef4444;font-size:12px;margin-bottom:12px;">{formError}</p>{/if}
   <div style="display:flex;gap:10px;justify-content:flex-end;">
-    <button on:click={closeModal} style="{btn}background:#f3f4f6;color:#374151;">Cancelar</button>
-    <button on:click={() => save('campanha')} disabled={saving} style="{btn}background:#7b0000;color:#fff;opacity:{saving?0.7:1};">
+    <button on:click={closeModal} style="{btn}background:rgba(107,114,128,0.08);color:#374151;">Cancelar</button>
+    <button on:click={() => save('campanha')} disabled={saving} style="{btn}background:rgba(123,0,0,0.08);color:#7b0000;opacity:{saving?0.7:1};">
       {saving?'Salvando...':'Salvar'}
     </button>
   </div>
@@ -615,8 +792,8 @@
   </label>
   {#if formError}<p style="color:#ef4444;font-size:12px;margin-bottom:12px;">{formError}</p>{/if}
   <div style="display:flex;gap:10px;justify-content:flex-end;">
-    <button on:click={closeModal} style="{btn}background:#f3f4f6;color:#374151;">Cancelar</button>
-    <button on:click={() => save('destaque')} disabled={saving} style="{btn}background:#7b0000;color:#fff;opacity:{saving?0.7:1};">
+    <button on:click={closeModal} style="{btn}background:rgba(107,114,128,0.08);color:#374151;">Cancelar</button>
+    <button on:click={() => save('destaque')} disabled={saving} style="{btn}background:rgba(123,0,0,0.08);color:#7b0000;opacity:{saving?0.7:1};">
       {saving?'Salvando...':'Salvar'}
     </button>
   </div>
@@ -650,8 +827,8 @@
   </label>
   {#if formError}<p style="color:#ef4444;font-size:12px;margin-bottom:12px;">{formError}</p>{/if}
   <div style="display:flex;gap:10px;justify-content:flex-end;">
-    <button on:click={closeModal} style="{btn}background:#f3f4f6;color:#374151;">Cancelar</button>
-    <button on:click={() => save('calendario')} disabled={saving} style="{btn}background:#7b0000;color:#fff;opacity:{saving?0.7:1};">
+    <button on:click={closeModal} style="{btn}background:rgba(107,114,128,0.08);color:#374151;">Cancelar</button>
+    <button on:click={() => save('calendario')} disabled={saving} style="{btn}background:rgba(123,0,0,0.08);color:#7b0000;opacity:{saving?0.7:1};">
       {saving?'Salvando...':'Salvar'}
     </button>
   </div>
@@ -665,10 +842,23 @@
   <input type="email" bind:value={fUsuario.email} style={inp} placeholder="email@exemplo.com" />
   <label style={lbl}>{editingId ? 'Nova senha (deixe em branco para manter)' : 'Senha *'}</label>
   <input type="password" bind:value={fUsuario.password} style={inp} placeholder="••••••••" />
+
+  <div style="border-top:1px solid #f3f4f6;margin:4px 0 14px;padding-top:14px;">
+    <p style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;">
+      WhatsApp
+    </p>
+    <label style={lbl}>Número do WhatsApp</label>
+    <input bind:value={fUsuario.whatsapp_numero} style={inp} placeholder="Ex: 5511999999999" />
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;margin-bottom:20px;cursor:pointer;">
+      <input type="checkbox" bind:checked={fUsuario.whatsapp_notificar} style="accent-color:#7b0000;" />
+      Receber notificações de datas comemorativas
+    </label>
+  </div>
+
   {#if formError}<p style="color:#ef4444;font-size:12px;margin-bottom:12px;">{formError}</p>{/if}
   <div style="display:flex;gap:10px;justify-content:flex-end;">
-    <button on:click={closeModal} style="{btn}background:#f3f4f6;color:#374151;">Cancelar</button>
-    <button on:click={() => save('usuarios')} disabled={saving} style="{btn}background:#7b0000;color:#fff;opacity:{saving?0.7:1};">
+    <button on:click={closeModal} style="{btn}background:rgba(107,114,128,0.08);color:#374151;">Cancelar</button>
+    <button on:click={() => save('usuarios')} disabled={saving} style="{btn}background:rgba(123,0,0,0.08);color:#7b0000;opacity:{saving?0.7:1};">
       {saving?'Salvando...':'Salvar'}
     </button>
   </div>
@@ -721,11 +911,59 @@
     </label>
   </div>
 
+  <div style="border-top:1px solid #f3f4f6;margin:4px 0 14px;padding-top:14px;">
+    <p style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;">
+      API WhatsApp
+    </p>
+    <label style={lbl}>Token da API</label>
+    <input bind:value={fConfig.api_token} style={inp} placeholder="Token de autenticação da API" />
+  </div>
+
   {#if formError}<p style="color:#ef4444;font-size:12px;margin-bottom:12px;">{formError}</p>{/if}
   <div style="display:flex;gap:10px;justify-content:flex-end;">
-    <button on:click={closeModal} style="{btn}background:#f3f4f6;color:#374151;">Cancelar</button>
-    <button on:click={() => save('configuracoes')} disabled={saving} style="{btn}background:#7b0000;color:#fff;opacity:{saving?0.7:1};">
+    <button on:click={closeModal} style="{btn}background:rgba(107,114,128,0.08);color:#374151;">Cancelar</button>
+    <button on:click={() => save('configuracoes')} disabled={saving} style="{btn}background:rgba(123,0,0,0.08);color:#7b0000;opacity:{saving?0.7:1};">
       {saving?'Salvando...':'Salvar'}
     </button>
   </div>
 </Modal>
+
+
+
+<style>
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 20px;
+    border: none;
+    border-left: 3px solid transparent;
+    background: transparent;
+    color: #fff;
+    font-size: 13px;
+    text-align: left;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .menu-item:hover {
+    background: rgba(255,255,255,0.08);
+  }
+  .menu-item--active {
+    background: rgba(255,255,255,0.15);
+    border-left-color: #fff;
+  }
+  .menu-item--active:hover {
+    background: rgba(255,255,255,0.18);
+  }
+  .menu-icon {
+    display: flex;
+    align-items: center;
+    width: 18px;
+    flex-shrink: 0;
+    opacity: 0.65;
+  }
+  .menu-icon--active { opacity: 1; }
+  .menu-label--active { opacity: 1 !important; }
+</style>

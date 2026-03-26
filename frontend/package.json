@@ -23,6 +23,7 @@
     "vite": "^5.0.3"
   },
   "dependencies": {
+    "@sveltejs/adapter-static": "^3.0.10",
     "lucide-svelte": "^0.468.0",
     "pocketbase": "^0.21.0"
   },
