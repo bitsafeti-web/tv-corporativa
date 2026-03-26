@@ -3,7 +3,7 @@
   <name>PocketBase TV Corporativa</name>
   <description>PocketBase backend da TV Corporativa</description>
   <executable>C:\repos\tv-corporativa\backend\pocketbase.exe</executable>
-  <arguments>serve --http=127.0.0.1:8090</arguments>
+  <arguments>serve --http=0.0.0.0:8090</arguments>
   <workingdirectory>C:\repos\tv-corporativa\backend</workingdirectory>
   <log mode="roll"></log>
   <onfailure action="restart" delay="5 sec"/>
