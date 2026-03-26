@@ -1,118 +1,95 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import ClockCard from '$lib/components/ClockCard.svelte';
-  import Weather from '$lib/components/Weather.svelte';
-  import Campanha from '$lib/components/Campanha.svelte';
-  import Destaques from '$lib/components/Destaques.svelte';
-  import BoletimTicker from '$lib/components/BoletimTicker.svelte';
-  import Maintenance from '$lib/components/Maintenance.svelte';
-  import DateNotification from '$lib/components/DateNotification.svelte';
-  import { startWeatherUpdates } from '$lib/stores/weather';
-  import { subscribeToConfig, configEfetiva } from '$lib/stores/config';
-  import { subscribeToDatasComemorativas, datasProximas } from '$lib/stores/datas';
-  import { startCalendarUpdates } from '$lib/stores/gcal';
-  import { subscribeToCampanha } from '$lib/stores/campanha';
-  import { subscribeToDestaques } from '$lib/stores/destaques';
-  import { subscribeToBoletim } from '$lib/stores/boletim';
+  import { pb } from '$lib/pocketbase';
+  import { goto } from '$app/navigation';
 
-  let stopWeather: () => void;
-  let stopConfig: () => void;
-  let stopCalendar: () => void;
-  let stopCampanha: () => void;
-  let stopDestaques: () => void;
-  let stopBoletim: () => void;
-  let stopDatas: () => void;
+  let email = '';
+  let password = '';
+  let lembrar = false;
+  let loading = false;
+  let error = '';
 
-  onMount(() => {
-    stopConfig   = subscribeToConfig();
-    stopWeather  = startWeatherUpdates();
-    stopCampanha = subscribeToCampanha();
-    stopDestaques = subscribeToDestaques();
-    stopBoletim  = subscribeToBoletim();
-    stopDatas    = subscribeToDatasComemorativas();
-  });
-
-  let calendarStarted = false;
-  $: if ($configEfetiva?.google_calendar_id && $configEfetiva?.google_api_key && !calendarStarted) {
-    calendarStarted = true;
-    stopCalendar = startCalendarUpdates($configEfetiva.google_calendar_id, $configEfetiva.google_api_key);
+  async function login() {
+    if (!email || !password) {
+      error = 'Preencha todos os campos.';
+      return;
+    }
+    loading = true;
+    error = '';
+    try {
+      await pb.collection('_superusers').authWithPassword(email, password);
+      goto('/admin');
+    } catch {
+      error = 'E-mail ou senha inválidos.';
+    } finally {
+      loading = false;
+    }
   }
 
-  onDestroy(() => {
-    stopWeather?.();
-    stopConfig?.();
-    stopCalendar?.();
-    stopCampanha?.();
-    stopDestaques?.();
-    stopBoletim?.();
-    stopDatas?.();
-  });
-
-  $: empresa      = $configEfetiva?.nome_empresa || 'Bitsafe';
-  $: timezone     = $configEfetiva?.fuso_horario || 'America/Sao_Paulo';
-  $: emManutencao = $configEfetiva?.modo_manutencao ?? false;
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') login();
+  }
 </script>
 
 <svelte:head>
-  <title>TV Corporativa | {empresa}</title>
+  <title>TV Corporativa — Login</title>
 </svelte:head>
 
-{#if emManutencao}
-  <Maintenance mensagem={$configEfetiva?.mensagem_manutencao} {empresa} />
-{:else}
-  <DateNotification datas={$datasProximas} />
-  <div class="w-screen h-screen flex flex-col overflow-hidden relative" style="background-color: #240b0b;">
+<div style="display:flex; min-height:100vh; margin:0; padding:0;">
 
-    <!-- Fundo -->
-    <div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(ellipse at top left, #7a000022 0%, transparent 60%), radial-gradient(ellipse at bottom right, #7a000015 0%, transparent 60%);"></div>
+  <!-- Faixa vermelha esquerda -->
+  <div style="width:30%; background-color:#7b0000; flex-shrink:0;"></div>
 
-    <div class="relative z-10 flex flex-col h-full p-6 gap-4">
+  <!-- Área branca direita -->
+  <div style="flex:1; background:#fff; display:flex; align-items:center; justify-content:center;">
+    <div style="width:340px;">
 
-      <!-- ÁREA PRINCIPAL: painel esquerdo + campanha -->
-      <div class="flex flex-1 gap-4 min-h-0">
-
-        <!-- PAINEL ESQUERDO: relógio + clima + destaques -->
-        <div class="w-72 flex-shrink-0 flex flex-col gap-3">
-
-          <!-- Clima + Previsão -->
-          <div class="glass rounded-2xl p-4 overflow-hidden min-h-0" style="flex: 0 0 70%;">
-            <Weather />
-          </div>
-
-          <!-- Destaques -->
-          <div class="glass-dark rounded-2xl p-4 min-h-0 overflow-hidden" style="flex: 0 0 30%;">
-            <Destaques />
-          </div>
-
-        </div>
-
-        <!-- COLUNA DIREITA: Campanha + Ticker -->
-        <div class="flex-1 min-w-0 flex flex-col gap-3">
-
-          <!-- Campanha -->
-          <div class="flex-1 rounded-2xl overflow-hidden min-h-0" style="display: flex;">
-            <Campanha />
-          </div>
-
-          <!-- Relógio + Ticker na base da campanha -->
-          <div class="flex-shrink-0 flex items-stretch gap-3 h-36">
-
-            <!-- Card do relógio -->
-            <div class="flex-shrink-0 h-full" style="width: 200px;">
-              <ClockCard {timezone} />
-            </div>
-
-            <!-- Boletim Ticker -->
-            <div class="flex-1 overflow-hidden rounded-xl">
-              <BoletimTicker />
-            </div>
-
-          </div>
-
-        </div>
-
+      <!-- Logo -->
+      <div style="display:flex; justify-content:center; margin-bottom:18px;">
+        <img src="/bitsafe-logo.png" alt="Bitsafe" style="height:90px; object-fit:contain;" />
       </div>
+
+      <!-- Subtítulo -->
+      <p style="text-align:center; color:#7b0000; font-size:15px; font-weight:500; margin-bottom:28px; font-family:sans-serif;">
+        Tv Corporativa GRUPO BITSAFE
+      </p>
+
+      <!-- Campos -->
+      <input
+        type="email"
+        bind:value={email}
+        on:keydown={handleKeydown}
+        autocomplete="email"
+        style="display:block; width:100%; box-sizing:border-box; padding:14px 16px; border:1px solid #bbb; border-radius:4px; font-size:14px; color:#333; margin-bottom:16px; outline:none; font-family:sans-serif;"
+      />
+
+      <input
+        type="password"
+        bind:value={password}
+        on:keydown={handleKeydown}
+        autocomplete="current-password"
+        style="display:block; width:100%; box-sizing:border-box; padding:14px 16px; border:1px solid #bbb; border-radius:4px; font-size:14px; color:#333; margin-bottom:12px; outline:none; font-family:sans-serif;"
+      />
+
+      <!-- Lembrar-me -->
+      <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#555; margin-bottom:20px; cursor:pointer; font-family:sans-serif;">
+        <input type="checkbox" bind:checked={lembrar} style="accent-color:#7b0000;" />
+        Lembrar-me
+      </label>
+
+      {#if error}
+        <p style="color:#b00; font-size:13px; margin-bottom:12px; font-family:sans-serif;">{error}</p>
+      {/if}
+
+      <!-- Botão -->
+      <button
+        on:click={login}
+        disabled={loading}
+        style="display:block; width:100%; padding:14px; background:rgba(123,0,0,0.08); color:#7b0000; font-size:15px; font-weight:600; border:none; border-radius:8px; cursor:pointer; font-family:sans-serif; opacity:{loading ? 0.7 : 1};"
+      >
+        {loading ? 'Entrando...' : 'Entrar'}
+      </button>
 
     </div>
   </div>
-{/if}
+
+</div>
