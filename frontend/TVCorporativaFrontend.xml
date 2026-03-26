@@ -3,7 +3,7 @@
   <name>TV Corporativa Frontend</name>
   <description>Frontend SvelteKit da TV Corporativa</description>
   <executable>C:\Windows\System32\cmd.exe</executable>
-  <arguments>/c serve -s build -l 5173</arguments>
+  <arguments>/c "C:\Users\bitsafe\AppData\Roaming\npm\serve.cmd" -s build -l 5173</arguments>
   <workingdirectory>C:\repos\tv-corporativa\frontend</workingdirectory>
   <log mode="roll"></log>
   <onfailure action="restart" delay="5 sec"/>
