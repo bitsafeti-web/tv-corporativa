@@ -268,7 +268,7 @@
           await pb.collection('Usuarios').update(editingId, data);
         } else {
           if (!fUsuario.password) { formError = 'Senha obrigatória.'; saving = false; return; }
-          await pb.collection('Usuarios').create({ ...fUsuario, passwordConfirm: fUsuario.password });
+          await pb.collection('Usuarios').create({ ...fUsuario, passwordConfirm: fUsuario.password, verified: true });
         }
       }
 
