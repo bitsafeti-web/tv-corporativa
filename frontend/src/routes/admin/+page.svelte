@@ -398,7 +398,12 @@
         </button>
       {/each}
     </nav>
-    <div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);">
+    <div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);display:flex;flex-direction:column;gap:8px;">
+      <a href="/tv" target="_blank"
+        style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:8px;background:rgba(255,255,255,0.15);border:none;border-radius:4px;color:rgba(255,255,255,0.9);font-size:12px;cursor:pointer;text-decoration:none;box-sizing:border-box;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+        Ver TV
+      </a>
       <button on:click={logout}
         style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:8px;background:rgba(255,255,255,0.1);border:none;border-radius:4px;color:rgba(255,255,255,0.8);font-size:12px;cursor:pointer;">
         {@html icons.logout} Sair

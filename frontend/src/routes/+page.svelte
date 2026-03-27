@@ -16,7 +16,11 @@
     loading = true;
     error = '';
     try {
-      await pb.collection('_superusers').authWithPassword(email, password);
+      try {
+        await pb.collection('Usuarios').authWithPassword(email, password);
+      } catch {
+        await pb.collection('_superusers').authWithPassword(email, password);
+      }
       goto('/admin');
     } catch {
       error = 'E-mail ou senha inválidos.';
