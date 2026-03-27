@@ -1,9 +1,24 @@
 <script lang="ts">
   import { boletimItems } from '$lib/stores/boletim';
 
+  let containerEl: HTMLDivElement;
+  let trackEl: HTMLDivElement;
+  let containerWidth = 0;
+  let trackWidth = 0;
+
   $: texto = $boletimItems.map(p => p.titulo).join('     •     ');
   $: duracao = Math.max(20, texto.length * 0.18);
-  $: conteudo = texto + '     •     ' + texto;
+
+  // Recalcula larguras quando o texto muda
+  $: if (texto && containerEl && trackEl) {
+    containerWidth = containerEl.offsetWidth;
+    trackWidth = trackEl.offsetWidth;
+  }
+
+  $: startX = containerWidth;
+  $: endX = -trackWidth;
+  $: totalDistance = startX - endX;
+  $: speed = totalDistance / (duracao * 60); // px por frame (referência)
 </script>
 
 <div class="flex flex-col h-full overflow-hidden rounded-xl">
@@ -17,11 +32,18 @@
   </div>
 
   <!-- Ticker rolando (abaixo do label) -->
-  <div class="flex-1 flex items-center overflow-hidden bg-white">
+  <div
+    bind:this={containerEl}
+    class="flex-1 flex items-center overflow-hidden bg-white"
+  >
     {#if texto}
-      <div class="ticker-track whitespace-nowrap" style="animation-duration: {duracao}s;">
+      <div
+        bind:this={trackEl}
+        class="ticker-track whitespace-nowrap"
+        style="animation-duration: {duracao}s; --start: {startX}px; --end: {endX}px;"
+      >
         <span class="text-black text-3xl font-bold px-4">
-          {conteudo}
+          {texto}
         </span>
       </div>
     {:else}
@@ -39,7 +61,7 @@
   }
 
   @keyframes ticker-move {
-    0%   { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    0%   { transform: translateX(var(--start)); }
+    100% { transform: translateX(var(--end)); }
   }
 </style>
