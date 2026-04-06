@@ -61,6 +61,11 @@
   let fUsuario     = { name: '', email: '', password: '', verified: true, emailVisibility: false, avatar: null as File | null };
   let fSuperAdmin  = { email: '', password: '' };
   let editingSuperAdmin = false;
+  let showPwdSuperAdmin = false;
+  let showPwdUsuario    = false;
+  let showPwdSmtp       = false;
+  let showPwdS3         = false;
+  let showPwdBackupS3   = false;
   let fData = { titulo: '', data: '', descricao: '', ativo: true, antecedencia_dias: 7, cor: '#7b0000' };
 
   let fConfig    = {
@@ -1167,7 +1172,12 @@
   <input type="email" bind:value={fSuperAdmin.email} style={inp} placeholder="email@exemplo.com" />
 
   <label style={lbl}>Nova senha (deixe em branco para manter)</label>
-  <input type="password" bind:value={fSuperAdmin.password} style={inp} placeholder="••••••••" />
+  <div style="position:relative;margin-bottom:12px;">
+    {#if showPwdSuperAdmin}<input type="text"     bind:value={fSuperAdmin.password} style="{inp}margin-bottom:0;padding-right:38px;" placeholder="••••••••" />{:else}<input type="password" bind:value={fSuperAdmin.password} style="{inp}margin-bottom:0;padding-right:38px;" placeholder="••••••••" />{/if}
+    <button type="button" on:click={() => showPwdSuperAdmin = !showPwdSuperAdmin} style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;line-height:1;" tabindex="-1">
+      {#if showPwdSuperAdmin}<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>{:else}<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{/if}
+    </button>
+  </div>
 
   {#if formError}<p style="color:#ef4444;font-size:12px;margin-bottom:12px;">{formError}</p>{/if}
   <div style="display:flex;gap:10px;justify-content:flex-end;">
@@ -1187,7 +1197,12 @@
   <input type="email" bind:value={fUsuario.email} style={inp} placeholder="email@exemplo.com" />
 
   <label style={lbl}>{editingId ? 'Nova senha (deixe em branco para manter)' : 'Senha *'}</label>
-  <input type="password" bind:value={fUsuario.password} style={inp} placeholder="••••••••" />
+  <div style="position:relative;margin-bottom:12px;">
+    {#if showPwdUsuario}<input type="text"     bind:value={fUsuario.password} style="{inp}margin-bottom:0;padding-right:38px;" placeholder="••••••••" />{:else}<input type="password" bind:value={fUsuario.password} style="{inp}margin-bottom:0;padding-right:38px;" placeholder="••••••••" />{/if}
+    <button type="button" on:click={() => showPwdUsuario = !showPwdUsuario} style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;line-height:1;" tabindex="-1">
+      {#if showPwdUsuario}<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>{:else}<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{/if}
+    </button>
+  </div>
 
   <label style={lbl}>Foto de perfil (avatar)</label>
   <input type="file" accept="image/*" on:change={(e) => { fUsuario.avatar = e.currentTarget.files?.[0] ?? null; }} style={inp} />
@@ -1302,7 +1317,12 @@
     <label style={lbl}>Usuário</label>
     <input bind:value={fPbSettings.smtpUsername} style={inp} />
     <label style={lbl}>Senha</label>
-    <input type="password" bind:value={fPbSettings.smtpPassword} style={inp} placeholder="deixe em branco para não alterar" />
+    <div style="position:relative;margin-bottom:12px;">
+      {#if showPwdSmtp}<input type="text"     bind:value={fPbSettings.smtpPassword} style="{inp}margin-bottom:0;padding-right:38px;" placeholder="deixe em branco para não alterar" />{:else}<input type="password" bind:value={fPbSettings.smtpPassword} style="{inp}margin-bottom:0;padding-right:38px;" placeholder="deixe em branco para não alterar" />{/if}
+      <button type="button" on:click={() => showPwdSmtp = !showPwdSmtp} style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;line-height:1;" tabindex="-1">
+        {#if showPwdSmtp}<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>{:else}<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{/if}
+      </button>
+    </div>
     <label style={lbl}>Nome local (EHLO/HELO)</label>
     <input bind:value={fPbSettings.smtpLocalName} style={inp} placeholder="opcional" />
     <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;cursor:pointer;margin-bottom:6px;">
@@ -1328,7 +1348,12 @@
     <label style={lbl}>Access Key</label>
     <input bind:value={fPbSettings.s3AccessKey} style={inp} />
     <label style={lbl}>Secret</label>
-    <input type="password" bind:value={fPbSettings.s3Secret} style={inp} placeholder="deixe em branco para não alterar" />
+    <div style="position:relative;margin-bottom:12px;">
+      {#if showPwdS3}<input type="text"     bind:value={fPbSettings.s3Secret} style="{inp}margin-bottom:0;padding-right:38px;" placeholder="deixe em branco para não alterar" />{:else}<input type="password" bind:value={fPbSettings.s3Secret} style="{inp}margin-bottom:0;padding-right:38px;" placeholder="deixe em branco para não alterar" />{/if}
+      <button type="button" on:click={() => showPwdS3 = !showPwdS3} style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;line-height:1;" tabindex="-1">
+        {#if showPwdS3}<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>{:else}<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{/if}
+      </button>
+    </div>
     <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;cursor:pointer;margin-bottom:6px;">
       <input type="checkbox" bind:checked={fPbSettings.s3ForcePathStyle} style="accent-color:#7b0000;" /> Force path style
     </label>
@@ -1364,7 +1389,12 @@
     <label style={lbl}>Access Key (backup)</label>
     <input bind:value={fPbSettings.backupS3AccessKey} style={inp} />
     <label style={lbl}>Secret (backup)</label>
-    <input type="password" bind:value={fPbSettings.backupS3Secret} style={inp} placeholder="deixe em branco para não alterar" />
+    <div style="position:relative;margin-bottom:12px;">
+      {#if showPwdBackupS3}<input type="text"     bind:value={fPbSettings.backupS3Secret} style="{inp}margin-bottom:0;padding-right:38px;" placeholder="deixe em branco para não alterar" />{:else}<input type="password" bind:value={fPbSettings.backupS3Secret} style="{inp}margin-bottom:0;padding-right:38px;" placeholder="deixe em branco para não alterar" />{/if}
+      <button type="button" on:click={() => showPwdBackupS3 = !showPwdBackupS3} style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;line-height:1;" tabindex="-1">
+        {#if showPwdBackupS3}<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>{:else}<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{/if}
+      </button>
+    </div>
     <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;cursor:pointer;margin-bottom:6px;">
       <input type="checkbox" bind:checked={fPbSettings.backupS3ForcePathStyle} style="accent-color:#7b0000;" /> Force path style
     </label>
