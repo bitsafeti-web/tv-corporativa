@@ -6,7 +6,7 @@ export const boletimItems = writable<BoletimItem[]>([]);
 async function load() {
   try {
     const records = await pb.collection('Boletins').getList<BoletimItem>(1, 50, {
-      filter: 'ativo = true',
+      filter: 'ativo = true && (publica_em = "" || publica_em <= @now) && (expira_em = "" || expira_em > @now)',
       sort: '+ordem'
     });
     boletimItems.set(records.items);

@@ -10,10 +10,9 @@ export const postsBoletim   = writable<Post[]>([]);
 export const postsDestaque  = writable<Post[]>([]);
 
 function buildFilter(extra = ''): string {
-  const now = new Date().toISOString().replace('T', ' ');
   return `ativo = true`
-    + ` && (expira_em = "" || expira_em > "${now}")`
-    + ` && (publica_em = "" || publica_em <= "${now}")`
+    + ` && (expira_em = "" || expira_em > @now)`
+    + ` && (publica_em = "" || publica_em <= @now)`
     + (extra ? ` && ${extra}` : '');
 }
 

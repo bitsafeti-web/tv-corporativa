@@ -485,7 +485,12 @@ migrate((app) => {
     "viewRule": ""
   });
 
-  return app.save(collection);
+  try {
+    app.findCollectionByNameOrId("configuracoes");
+    // já existe, nada a fazer
+  } catch (_) {
+    app.save(collection);
+  }
 }, (app) => {
   const collection = app.findCollectionByNameOrId("pbc_477892449");
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { pb } from '$lib/pocketbase';
   import { goto } from '$app/navigation';
+  export let params: Record<string, string> = {};
 
   let email = '';
   let password = '';

@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { pb } from '$lib/pocketbase';
   import { goto } from '$app/navigation';
+  export let params: Record<string, string> = {};
   import ClockCard from '$lib/components/ClockCard.svelte';
   import Weather from '$lib/components/Weather.svelte';
   import Campanha from '$lib/components/Campanha.svelte';

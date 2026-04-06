@@ -15,7 +15,7 @@
     <!-- card -->
     <div
       on:click|stopPropagation
-      style="background:#fff;border-radius:10px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);"
+      style="background:#fff;border-radius:10px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);"
     >
       <div style="padding:20px 24px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;">
         <h2 style="margin:0;font-size:15px;font-weight:600;color:#111;">{title}</h2>

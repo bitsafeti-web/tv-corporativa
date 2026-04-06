@@ -1,3 +1,7 @@
+<script lang="ts">
+  export let params: Record<string, string> = {};
+</script>
+
 <svelte:head>
   <style>
     html, body {
