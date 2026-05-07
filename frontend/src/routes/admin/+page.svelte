@@ -403,6 +403,7 @@
         .filter(Boolean);
       if (messages.length) return messages.join(' | ');
     }
+    if (err?.status === 413) return 'Arquivo muito grande para envio. O limite atual é 10 MB.';
     if (response?.message) return response.message;
     if (err?.isAbort || err?.status === 0) return 'A requisição foi interrompida pelo navegador. Recarregue a página e tente novamente.';
     return err?.message || 'Erro ao salvar.';
