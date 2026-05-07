@@ -1,5 +1,4 @@
 <script lang="ts">
-  export let params: Record<string, string> = {};
   import { pb } from '$lib/pocketbase';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
@@ -8,7 +7,6 @@
   import Modal from './Modal.svelte';
   import ConfirmDialog from './ConfirmDialog.svelte';
   import CalendarGrid from './CalendarGrid.svelte';
-
   const PB_URL = PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
 
   type Section = 'dashboard' | 'usuarios' | 'boletins' | 'campanha' | 'configuracoes' | 'destaque' | 'calendario';
@@ -53,6 +51,7 @@
   let editingId: string | null = null;
   let saving = false;
   let formError = '';
+  const noAutoCancel = { requestKey: null };
 
   // forms
   let fBoletim   = { titulo: '', ordem: 0, ativo: true, publica_em: '', expira_em: '' };
@@ -64,6 +63,74 @@
   let showPwdSuperAdmin = false;
   let showPwdUsuario    = false;
   let showPwdSmtp       = false;
+  let testEmailAddr     = '';
+  let testEmailLoading  = false;
+  let testEmailMsg      = '';
+  let testEmailErr      = '';
+
+  async function sendTestEmail() {
+    if (!testEmailAddr || !testEmailAddr.includes('@')) { testEmailErr = 'Digite um e-mail válido.'; return; }
+    testEmailLoading = true; testEmailMsg = ''; testEmailErr = '';
+    try {
+      await pb.send('/api/settings/test/email', {
+        method: 'POST',
+        body: { template: 'verification', email: testEmailAddr }
+      });
+      testEmailMsg = `E-mail de teste enviado para ${testEmailAddr}!`;
+    } catch (err: any) {
+      testEmailErr = err?.response?.message || err?.message || 'Erro ao enviar.';
+    } finally {
+      testEmailLoading = false;
+    }
+  }
+  // ── Templates de e-mail ─────────────────────────────────────────
+  type TplKey = 'verificationTemplate' | 'resetPasswordTemplate' | 'confirmEmailChangeTemplate';
+  const tplLabels: Record<TplKey, string> = {
+    verificationTemplate:       'Verificação de e-mail',
+    resetPasswordTemplate:      'Redefinição de senha',
+    confirmEmailChangeTemplate: 'Confirmação de troca de e-mail',
+  };
+  let tplKey:     TplKey  = 'resetPasswordTemplate';
+  let tplSubject: string  = '';
+  let tplBody:    string  = '';
+  let tplLoading: boolean = false;
+  let tplMsg:     string  = '';
+  let tplErr:     string  = '';
+  let tplPreview: boolean = false;
+
+  async function loadTemplate() {
+    tplLoading = true; tplMsg = ''; tplErr = '';
+    try {
+      const col = await pb.send('/api/collections/Usuarios', { method: 'GET' });
+      tplSubject = col[tplKey]?.subject ?? '';
+      tplBody    = col[tplKey]?.body    ?? '';
+    } catch (err: any) {
+      tplErr = err?.response?.message || 'Erro ao carregar template.';
+    } finally { tplLoading = false; }
+  }
+
+  async function saveTemplate() {
+    tplLoading = true; tplMsg = ''; tplErr = '';
+    try {
+      const patch: any = {};
+      patch[tplKey] = { subject: tplSubject, body: tplBody };
+      // Aplica em Usuarios e _superusers
+      const cols = await pb.send('/api/collections', { method: 'GET' });
+      const authCols = (cols?.items ?? []).filter((c: any) => c.type === 'auth');
+      for (const c of authCols) {
+        await pb.send(`/api/collections/${c.id}`, { method: 'PATCH', body: patch });
+      }
+      tplMsg = 'Template salvo com sucesso!';
+    } catch (err: any) {
+      tplErr = err?.response?.message || 'Erro ao salvar template.';
+    } finally { tplLoading = false; }
+  }
+
+  const tplEntries = Object.entries(tplLabels) as [TplKey, string][];
+  function setTplKey(k: string) { tplKey = k as TplKey; }
+
+  $: if (isSuperuser && tplKey) loadTemplate();
+
   let showPwdS3         = false;
   let showPwdBackupS3   = false;
   let fData = { titulo: '', data: '', descricao: '', ativo: true, antecedencia_dias: 7, cor: '#7b0000' };
@@ -136,16 +203,18 @@
   async function loadAll() {
     loading = true;
     try {
-      await ensureDatasComemorativas().catch(() => {});
+      if (isSuperuser) await ensureDatasComemorativas().catch(() => {});
       const [rUsers, rSuperAdmins, rBol, rCamp, rDest, rDatas, rCfg, rPbSettings] = await Promise.all([
         pb.collection('Usuarios').getList(1, 100, { sort: 'name' }).catch(() => ({ items: [] })),
-        pb.collection('_superusers').getList(1, 100, { sort: 'email' }).catch((e) => { console.error('_superusers:', e); return { items: [] }; }),
+        isSuperuser
+          ? pb.collection('_superusers').getList(1, 100, { sort: 'email' }).catch((e) => { console.error('_superusers:', e); return { items: [] }; })
+          : Promise.resolve({ items: [] }),
         pb.collection('Boletins').getList(1, 100, { sort: 'ordem' }).catch(() => ({ items: [] })),
         pb.collection('Campanha').getList(1, 100, { sort: 'titulo' }).catch((e) => { console.error('campanha:', e); return { items: [] }; }),
         pb.collection('Destaque').getList(1, 100, { sort: 'titulo' }).catch((e) => { console.error('destaque:', e); return { items: [] }; }),
         pb.collection('DatasComemorativas').getFullList({ sort: 'data' }).catch(() => []),
         pb.collection('Configuracoes').getList(1, 1).catch(() => ({ items: [] })),
-        pb.send('/api/settings', { method: 'GET' }).catch(() => null),
+        isSuperuser ? pb.send('/api/settings', { method: 'GET' }).catch(() => null) : Promise.resolve(null),
       ]);
       usuarios    = rUsers.items;
       superAdmins = rSuperAdmins.items;
@@ -322,8 +391,66 @@
     return d.toISOString().replace('T', ' ');
   }
 
+  function compactPocketBaseError(err: any): string {
+    const response = err?.response ?? err?.data;
+    const fieldErrors = response?.data;
+    if (fieldErrors && typeof fieldErrors === 'object') {
+      const messages = Object.entries(fieldErrors)
+        .map(([field, value]: [string, any]) => {
+          const msg = value?.message || value?.code || JSON.stringify(value);
+          return `${field}: ${msg}`;
+        })
+        .filter(Boolean);
+      if (messages.length) return messages.join(' | ');
+    }
+    if (response?.message) return response.message;
+    if (err?.isAbort || err?.status === 0) return 'A requisição foi interrompida pelo navegador. Recarregue a página e tente novamente.';
+    return err?.message || 'Erro ao salvar.';
+  }
+
+  function parsePbDate(value: unknown): Date | null {
+    if (!value) return null;
+    const normalized = String(value).replace(' ', 'T');
+    const date = new Date(normalized);
+    return isNaN(date.getTime()) ? null : date;
+  }
+
+  function formatDate(value: unknown): string {
+    const date = parsePbDate(value);
+    return date
+      ? date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '—';
+  }
+
+  function dashboardPostDate(item: any): string {
+    return formatDate(item.publica_em || item.created);
+  }
+
+  function dateTime(item: any): number {
+    return parsePbDate(item.publica_em || item.created)?.getTime() ?? 0;
+  }
+
+  function dashboardItems(items: any[]): any[] {
+    return [...items].sort((a, b) => dateTime(b) - dateTime(a)).slice(0, 5);
+  }
+
+  function postCalendarEvents(items: any[], tipo: string, cor: string): any[] {
+    return items
+      .filter((item) => item.publica_em)
+      .map((item) => ({
+        id: `${tipo}-${item.id}`,
+        titulo: item.titulo,
+        data: item.publica_em,
+        cor,
+        tipo,
+        ativo: item.ativo,
+        descricao: tipo,
+      }));
+  }
+
   // ── save ──────────────────────────────────────────────────
   async function save(sec: Section) {
+    if (saving) return;
     saving = true;
     formError = '';
     try {
@@ -332,10 +459,10 @@
         if (editingId) {
           const data: any = { email: fSuperAdmin.email };
           if (fSuperAdmin.password) { data.password = fSuperAdmin.password; data.passwordConfirm = fSuperAdmin.password; }
-          await pb.collection('_superusers').update(editingId, data);
+          await pb.collection('_superusers').update(editingId, data, noAutoCancel);
         } else {
           if (!fSuperAdmin.password.trim()) { formError = 'Senha obrigatória.'; saving = false; return; }
-          await pb.collection('_superusers').create({ email: fSuperAdmin.email, password: fSuperAdmin.password, passwordConfirm: fSuperAdmin.password });
+          await pb.collection('_superusers').create({ email: fSuperAdmin.email, password: fSuperAdmin.password, passwordConfirm: fSuperAdmin.password }, noAutoCancel);
         }
         modalOpen = false;
         await loadAll();
@@ -344,9 +471,11 @@
       }
 
       if (sec === 'boletins') {
-        const data: any = { titulo: fBoletim.titulo, ordem: Number(fBoletim.ordem), ativo: fBoletim.ativo, publica_em: toDbDate(fBoletim.publica_em), expira_em: toDbDate(fBoletim.expira_em) };
-        editingId ? await pb.collection('Boletins').update(editingId, data)
-                  : await pb.collection('Boletins').create(data);
+        const data: any = { titulo: fBoletim.titulo, ordem: Number(fBoletim.ordem), ativo: fBoletim.ativo };
+        if (fBoletim.publica_em) data.publica_em = toDbDate(fBoletim.publica_em);
+        if (fBoletim.expira_em) data.expira_em = toDbDate(fBoletim.expira_em);
+        editingId ? await pb.collection('Boletins').update(editingId, data, noAutoCancel)
+                  : await pb.collection('Boletins').create(data, noAutoCancel);
       }
 
       else if (sec === 'campanha') {
@@ -361,8 +490,8 @@
           if (fCampanha.publica_em) fd.append('publica_em', toDbDate(fCampanha.publica_em)!);
           if (fCampanha.expira_em)  fd.append('expira_em',  toDbDate(fCampanha.expira_em)!);
           fd.append('imagem_1568x876px', fCampanha.imagem);
-          editingId ? await pb.collection('Campanha').update(editingId, fd)
-                    : await pb.collection('Campanha').create(fd);
+          editingId ? await pb.collection('Campanha').update(editingId, fd, noAutoCancel)
+                    : await pb.collection('Campanha').create(fd, noAutoCancel);
         } else {
           // sem arquivo: usa objeto simples (booleanos nativos)
           const data: any = {
@@ -371,8 +500,8 @@
           };
           if (fCampanha.publica_em) data.publica_em = toDbDate(fCampanha.publica_em);
           if (fCampanha.expira_em)  data.expira_em  = toDbDate(fCampanha.expira_em);
-          editingId ? await pb.collection('Campanha').update(editingId, data)
-                    : await pb.collection('Campanha').create(data);
+          editingId ? await pb.collection('Campanha').update(editingId, data, noAutoCancel)
+                    : await pb.collection('Campanha').create(data, noAutoCancel);
         }
       }
 
@@ -380,8 +509,8 @@
         const data: any = { titulo: fDestaque.titulo, ativo: fDestaque.ativo };
         if (fDestaque.expira_em)  data.expira_em  = toDbDate(fDestaque.expira_em);
         if (fDestaque.publica_em) data.publica_em = toDbDate(fDestaque.publica_em);
-        editingId ? await pb.collection('Destaque').update(editingId, data)
-                  : await pb.collection('Destaque').create(data);
+        editingId ? await pb.collection('Destaque').update(editingId, data, noAutoCancel)
+                  : await pb.collection('Destaque').create(data, noAutoCancel);
       }
 
       else if (sec === 'usuarios') {
@@ -393,12 +522,12 @@
         if (fUsuario.avatar) { fd.append('avatar', fUsuario.avatar); }
         if (editingId) {
           if (fUsuario.password) { fd.append('password', fUsuario.password); fd.append('passwordConfirm', fUsuario.password); }
-          await pb.collection('Usuarios').update(editingId, fd);
+          await pb.collection('Usuarios').update(editingId, fd, noAutoCancel);
         } else {
           if (!fUsuario.password) { formError = 'Senha obrigatória.'; saving = false; return; }
           fd.append('password', fUsuario.password);
           fd.append('passwordConfirm', fUsuario.password);
-          await pb.collection('Usuarios').create(fd);
+          await pb.collection('Usuarios').create(fd, noAutoCancel);
         }
       }
 
@@ -413,16 +542,16 @@
           antecedencia_dias: Number(fData.antecedencia_dias),
           cor: fData.cor,
         };
-        editingId ? await pb.collection('DatasComemorativas').update(editingId, data)
-                  : await pb.collection('DatasComemorativas').create(data);
+        editingId ? await pb.collection('DatasComemorativas').update(editingId, data, noAutoCancel)
+                  : await pb.collection('DatasComemorativas').create(data, noAutoCancel);
       }
 
       else if (sec === 'configuracoes') {
         const data = { ...fConfig };
         if (editingId) {
-          await pb.collection('Configuracoes').update(editingId, data);
+          await pb.collection('Configuracoes').update(editingId, data, noAutoCancel);
         } else {
-          await pb.collection('Configuracoes').create(data);
+          await pb.collection('Configuracoes').create(data, noAutoCancel);
         }
         // salva configurações do sistema PocketBase (só superusers)
         if (isSuperuser && pbSettings) {
@@ -489,7 +618,7 @@
       modalOpen = false;
       await loadAll();
     } catch (e: any) {
-      formError = e?.message ?? 'Erro ao salvar.';
+      formError = compactPocketBaseError(e);
     } finally {
       saving = false;
     }
@@ -540,6 +669,13 @@
     }).sort((a: any, b: any) => a.data.localeCompare(b.data));
   })();
 
+  $: dashboardCalendarEvents = [
+    ...datas,
+    ...postCalendarEvents(campanhas, 'Campanha', '#7c3aed'),
+    ...postCalendarEvents(boletins, 'Boletim', '#0369a1'),
+    ...postCalendarEvents(destaques, 'Destaque', '#f97316'),
+  ];
+
   function diasRestantes(iso: string): number {
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     const d = new Date(iso); d.setHours(0,0,0,0);
@@ -570,7 +706,6 @@
   const adminOnly: Section[] = ['usuarios', 'configuracoes'];
   $: visibleMenu = isSuperuser ? menu : menu.filter(m => !adminOnly.includes(m.id));
   $: if (!isSuperuser && adminOnly.includes(section)) section = 'dashboard';
-
   // ── estilos de input reutilizáveis ────────────────────────
   const inp = 'display:block;width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;color:#111;margin-bottom:14px;';
   const lbl = 'display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;';
@@ -584,7 +719,7 @@
   <!-- SIDEBAR -->
   <aside style="width:220px;background:#7b0000;display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;">
     <div style="padding:12px 20px 12px 23px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:flex-start;">
-      <img src="/bitsafe-branco.png" alt="Bitsafe" style="height:68px;object-fit:contain;" />
+      <img src="/bitgroup-white.png" alt="Bitoup" style="height:68px;object-fit:contain;" />
     </div>
     <nav style="flex:1;padding:12px 0;overflow-y:auto;display:flex;flex-direction:column;">
       {#each visibleMenu as item}
@@ -666,7 +801,11 @@
         <!-- Popover -->
         {#if avisoOpen}
           <!-- fechar ao clicar fora -->
-          <div on:click={() => avisoOpen = false}
+          <div
+            on:click={() => avisoOpen = false}
+            on:keydown={(e) => { if (e.key === 'Escape') avisoOpen = false; }}
+            role="presentation"
+            tabindex="-1"
             style="position:fixed;inset:0;z-index:49;"></div>
 
           <div style="position:absolute;right:0;top:calc(100% + 8px);width:320px;
@@ -758,7 +897,7 @@
           </div>
           <div style="display:grid;grid-template-columns:420px 1fr;min-height:320px;">
             <div style="border-right:1px solid #f3f4f6;">
-              <CalendarGrid {datas} showLegend={false} />
+              <CalendarGrid datas={dashboardCalendarEvents} showLegend={false} />
             </div>
             <div style="display:flex;flex-direction:column;">
               <!-- cabeçalho colunas -->
@@ -771,7 +910,7 @@
               {#if datas.length === 0}
                 <p style="padding:40px;text-align:center;color:#9ca3af;font-size:13px;">Nenhuma data cadastrada.</p>
               {:else}
-                {#each datas.sort((a,b) => a.data.localeCompare(b.data)) as d}
+                {#each datas.sort((a,b) => a.data.localeCompare(b.data)).slice(0, 10) as d}
                   <div style="display:grid;grid-template-columns:1fr 140px 100px 80px;align-items:center;border-bottom:1px solid #f9fafb;">
                     <div style="display:flex;align-items:center;gap:8px;min-width:0;padding:11px 20px;border-right:1px solid #f3f4f6;">
                       <span style="width:8px;height:8px;border-radius:50%;background:{d.cor||'#7b0000'};flex-shrink:0;"></span>
@@ -789,6 +928,11 @@
                     </div>
                   </div>
                 {/each}
+                {#if datas.length > 10}
+                  <div style="padding:10px 20px;border-top:1px solid #f3f4f6;">
+                    <span style="font-size:12px;color:#9ca3af;">Exibindo 10 de {datas.length} agendamentos</span>
+                  </div>
+                {/if}
               {/if}
             </div>
           </div>
@@ -803,7 +947,7 @@
             <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden;">
               <div style="padding:16px 20px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
                 <span style="font-size:13px;font-weight:600;color:#374151;">{bloco.label}</span>
-                <button on:click={() => section = bloco.sec}
+                <button on:click={() => section = bloco.sec as Section}
                   style="font-size:12px;color:#7b0000;background:rgba(123,0,0,0.08);border:none;cursor:pointer;font-weight:600;padding:5px 12px;border-radius:8px;">
                   Gerenciar →
                 </button>
@@ -815,14 +959,14 @@
                 <span style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;padding:8px 16px;border-right:1px solid #e5e7eb;text-align:center;">Expiração</span>
                 <span style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;padding:8px 16px;text-align:center;">Status</span>
               </div>
-              {#each bloco.items.slice(0,5) as it}
+              {#each dashboardItems(bloco.items) as it}
                 <div style="display:grid;grid-template-columns:1fr 140px 140px 80px;align-items:center;border-bottom:1px solid #f9fafb;">
                   <span style="font-size:13px;font-weight:500;color:#1f2937;padding:11px 20px;border-right:1px solid #f3f4f6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{it.titulo}</span>
                   <span style="font-size:12px;color:#6b7280;padding:11px 16px;border-right:1px solid #f3f4f6;text-align:center;">
-                    {it.created ? new Date(it.created.replace(' ','T')).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—'}
+                    {dashboardPostDate(it)}
                   </span>
                   <span style="font-size:12px;color:{it.expira_em ? '#ef4444' : '#9ca3af'};padding:11px 16px;border-right:1px solid #f3f4f6;text-align:center;">
-                    {it.expira_em ? new Date(it.expira_em.replace(' ','T')).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) : 'Sem expiração'}
+                    {it.expira_em ? formatDate(it.expira_em) : 'Sem expiração'}
                   </span>
                   <div style="padding:11px 16px;display:flex;align-items:center;justify-content:center;">
                     <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;
@@ -875,7 +1019,7 @@
       {:else if section === 'calendario'}
         <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start;">
           <!-- Calendário visual -->
-          <CalendarGrid {datas} />
+          <CalendarGrid datas={dashboardCalendarEvents} />
 
           <!-- Lista -->
           <GenericTable {loading} items={datas} dropdownActions
@@ -1020,6 +1164,7 @@
           {/if}
 
         </div>
+
       {/if}
 
     </div>
@@ -1325,10 +1470,100 @@
     </div>
     <label style={lbl}>Nome local (EHLO/HELO)</label>
     <input bind:value={fPbSettings.smtpLocalName} style={inp} placeholder="opcional" />
-    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;cursor:pointer;margin-bottom:6px;">
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;cursor:pointer;margin-bottom:14px;">
       <input type="checkbox" bind:checked={fPbSettings.smtpTls} style="accent-color:#7b0000;" /> TLS
     </label>
+
+    <!-- Testar envio de e-mail -->
+    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px;">
+      <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 10px;">Testar envio de e-mail</p>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input
+          type="email"
+          bind:value={testEmailAddr}
+          placeholder="destinatario@email.com"
+          style="flex:1;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;color:#111;outline:none;"
+        />
+        <button
+          type="button"
+          on:click={sendTestEmail}
+          disabled={testEmailLoading}
+          style="padding:8px 14px;background:#7b0000;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;opacity:{testEmailLoading?0.6:1};"
+        >
+          {testEmailLoading ? 'Enviando...' : 'Enviar teste'}
+        </button>
+      </div>
+      {#if testEmailMsg}
+        <p style="font-size:12px;color:#15803d;margin:8px 0 0;">{testEmailMsg}</p>
+      {/if}
+      {#if testEmailErr}
+        <p style="font-size:12px;color:#b91c1c;margin:8px 0 0;">{testEmailErr}</p>
+      {/if}
+    </div>
   </div>
+
+  <!-- ── Templates de E-mail ── -->
+  {#if isSuperuser}
+  <div style="border-top:1px solid #f3f4f6;margin:4px 0 14px;padding-top:14px;">
+    <p style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;">Templates de e-mail</p>
+
+    <!-- Seletor de template -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+      {#each tplEntries as [k, label]}
+        <button type="button" on:click={() => setTplKey(k)}
+          class="tpl-btn"
+          class:tpl-btn-active={tplKey === k}>
+          {label}
+        </button>
+      {/each}
+    </div>
+
+    {#if tplLoading}
+      <p style="font-size:13px;color:#9ca3af;">Carregando...</p>
+    {:else}
+      <!-- Assunto -->
+      <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Assunto</label>
+      <input bind:value={tplSubject} style="display:block;width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;color:#111;margin-bottom:12px;" placeholder="Assunto do e-mail" />
+
+      <!-- Corpo HTML -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;">Corpo (HTML)</label>
+        <button type="button" on:click={() => tplPreview = !tplPreview}
+          style="font-size:11px;color:#7b0000;background:none;border:none;cursor:pointer;font-weight:600;padding:0;">
+          {tplPreview ? '✏️ Editar' : '👁 Pré-visualizar'}
+        </button>
+      </div>
+
+      {#if tplPreview}
+        <!-- Preview do HTML -->
+        <div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;height:360px;">
+          <iframe srcdoc={tplBody} style="width:100%;height:100%;border:none;" title="Preview do e-mail"></iframe>
+        </div>
+      {:else}
+        <textarea bind:value={tplBody} rows="14"
+          style="display:block;width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;font-family:monospace;color:#111;resize:vertical;line-height:1.5;"
+          placeholder="HTML do e-mail..."></textarea>
+      {/if}
+
+      <!-- Variáveis disponíveis -->
+      <p style="font-size:11px;color:#9ca3af;margin:6px 0 14px;line-height:1.6;">
+        Variáveis disponíveis:
+        <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">&#123;APP_NAME&#125;</code>
+        <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">&#123;APP_URL&#125;</code>
+        <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">&#123;ACTION_URL&#125;</code>
+        <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">&#123;TOKEN&#125;</code>
+      </p>
+
+      {#if tplMsg}<p style="font-size:12px;color:#15803d;margin:0 0 10px;">{tplMsg}</p>{/if}
+      {#if tplErr}<p style="font-size:12px;color:#b91c1c;margin:0 0 10px;">{tplErr}</p>{/if}
+
+      <button type="button" on:click={saveTemplate} disabled={tplLoading}
+        style="padding:9px 20px;background:#7b0000;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;opacity:{tplLoading?0.6:1};">
+        {tplLoading ? 'Salvando...' : 'Salvar template'}
+      </button>
+    {/if}
+  </div>
+  {/if}
 
   <!-- ── S3 (Armazenamento de arquivos) ── -->
   <div style="border-top:1px solid #f3f4f6;margin:4px 0 14px;padding-top:14px;">
@@ -1507,4 +1742,13 @@
   }
   .menu-icon--active { opacity: 1; }
   .menu-label--active { opacity: 1 !important; }
+  .tpl-btn {
+    padding: 6px 12px; border-radius: 20px;
+    border: 1px solid #d1d5db; background: #fff;
+    color: #374151; font-size: 12px; cursor: pointer; font-weight: 400;
+  }
+  .tpl-btn-active {
+    border-color: #7b0000; background: #7b0000;
+    color: #fff; font-weight: 600;
+  }
 </style>

@@ -92,26 +92,32 @@
 
       <!-- dias -->
       {#each celulas as { dia, eventos, eHoje }}
+        {@const corBase = eventos.length > 0 ? (eventos[0].cor || '#7b0000') : ''}
         <button
           on:click={() => clickDia(dia, eventos)}
           style="
             display:flex;flex-direction:column;align-items:center;justify-content:center;
-            padding:6px 2px;border-radius:0;border:none;min-height:44px;
-            background:{eHoje ? '#7b0000' : eventos.length > 0 ? '#fff7f7' : 'transparent'};
+            padding:6px 2px;border-radius:4px;border:none;min-height:44px;
+            background:{eHoje ? '#7b0000' : eventos.length > 0 ? corBase + '22' : 'transparent'};
+            outline:{eventos.length > 0 && !eHoje ? '2px solid ' + corBase : 'none'};
+            outline-offset:-1px;
             color:{eHoje ? '#fff' : '#1f2937'};
             cursor:{eventos.length > 0 ? 'pointer' : 'default'};
             transition:background .15s;
           "
-          title={eventos.map(e => e.titulo).join(', ')}
+          title={eventos.map(e => e.descricao ? `${e.descricao}: ${e.titulo}` : e.titulo).join(', ')}
         >
-          <span style="font-size:13px;font-weight:{eHoje ? 700 : eventos.length > 0 ? 600 : 400};">
+          <span style="font-size:13px;font-weight:{eHoje ? 700 : eventos.length > 0 ? 700 : 400};color:{eHoje ? '#fff' : eventos.length > 0 ? corBase : '#1f2937'};">
             {dia}
           </span>
           {#if eventos.length > 0}
-            <div style="display:flex;gap:2px;margin-top:3px;flex-wrap:wrap;justify-content:center;max-width:32px;">
-              {#each eventos.slice(0, 3) as ev}
-                <span style="width:6px;height:6px;border-radius:50%;background:{ev.cor || '#7b0000'};flex-shrink:0;"></span>
+            <div style="display:flex;gap:2px;margin-top:3px;flex-wrap:wrap;justify-content:center;max-width:36px;">
+              {#each eventos.slice(0, 6) as ev}
+                <span style="width:7px;height:7px;border-radius:50%;background:{ev.cor || '#7b0000'};flex-shrink:0;"></span>
               {/each}
+              {#if eventos.length > 6}
+                <span style="font-size:8px;line-height:7px;color:{eHoje ? '#fff' : '#6b7280'};">+{eventos.length - 6}</span>
+              {/if}
             </div>
           {/if}
         </button>

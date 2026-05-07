@@ -10,11 +10,19 @@
   <!-- overlay -->
   <div
     on:click={close}
+    on:keydown={(e) => { if (e.key === 'Escape') close(); }}
+    role="presentation"
+    tabindex="-1"
     style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;"
   >
     <!-- card -->
     <div
       on:click|stopPropagation
+      on:keydown|stopPropagation={() => {}}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title || 'Modal'}
+      tabindex="-1"
       style="background:#fff;border-radius:10px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);"
     >
       <div style="padding:20px 24px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;">

@@ -24,11 +24,19 @@
   <!-- overlay -->
   <div
     on:click={cancel}
+    on:keydown={(e) => { if (e.key === 'Escape') cancel(); if (e.key === 'Enter') confirm(); }}
+    role="presentation"
+    tabindex="-1"
     style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;"
   >
     <!-- card -->
     <div
       on:click|stopPropagation
+      on:keydown|stopPropagation={() => {}}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Confirmar exclusão"
+      tabindex="-1"
       style="background:#fff;border-radius:12px;width:100%;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.22);overflow:hidden;"
     >
       <!-- topo vermelho -->

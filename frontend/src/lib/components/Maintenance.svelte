@@ -43,7 +43,7 @@
     </div>
 
     <!-- Rodapé -->
-    <p class="relative z-10 text-white/20 text-xs">© {new Date().getFullYear()} Bitsafe TI</p>
+    <p class="relative z-10 text-white/20 text-xs">© {new Date().getFullYear()} {empresa || 'Bitsafe TI'}</p>
   </div>
 
   <!-- Área direita escura -->

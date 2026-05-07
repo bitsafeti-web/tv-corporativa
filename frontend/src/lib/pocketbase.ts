@@ -2,6 +2,7 @@ import PocketBase from 'pocketbase';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 
 export const pb = new PocketBase(PUBLIC_POCKETBASE_URL);
+pb.autoCancellation(false);
 
 export type Post = {
   id: string;
@@ -40,6 +41,8 @@ export type CampanhaItem = {
   titulo: string;
   imagem_1568x876px?: string;
   ativo: boolean;
+  publica_em?: string;
+  expira_em?: string;
   created: string;
   updated: string;
 };
@@ -59,6 +62,8 @@ export type BoletimItem = {
   titulo: string;
   ativo: boolean;
   ordem: number;
+  publica_em?: string;
+  expira_em?: string;
   created: string;
   updated: string;
 };

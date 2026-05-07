@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import { pb, type Tela } from '$lib/pocketbase';
   import Clock from '$lib/components/Clock.svelte';
   import DateDisplay from '$lib/components/DateDisplay.svelte';
@@ -28,6 +29,7 @@
   let stopCalendar: () => void;
 
   onMount(async () => {
+    if (!pb.authStore.isValid) { goto('/'); return; }
     // Carrega dados da tela pelo slug
     try {
       const records = await pb.collection('telas').getList<Tela>(1, 1, {

@@ -3,8 +3,16 @@ echo Iniciando PocketBase (DEV LOCAL)...
 echo Banco de dados: pb_data_dev\ (separado da producao)
 echo.
 
-REM Cria/atualiza o superusuario
-pocketbase.exe superuser upsert guilherme@bitsafeti.com.br Familiarocha2026.
+REM Opcional: cria/atualiza o superusuario quando as variaveis estiverem definidas
+if "%PB_SUPERUSER_EMAIL%"=="" goto skip_superuser
+if "%PB_SUPERUSER_PASSWORD%"=="" goto skip_superuser
+pocketbase.exe superuser upsert "%PB_SUPERUSER_EMAIL%" "%PB_SUPERUSER_PASSWORD%"
+goto after_superuser
+
+:skip_superuser
+echo PB_SUPERUSER_EMAIL/PB_SUPERUSER_PASSWORD nao definidos; pulando upsert de superusuario.
+
+:after_superuser
 
 echo.
 echo Painel admin: http://127.0.0.1:8090/_/
