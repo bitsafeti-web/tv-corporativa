@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 rss_boletins.py — Importa manchetes de feeds RSS de cibersegurança para a
-collection Boletins do PocketBase, que aparece no ticker da TV.
+collection Boletins do PocketBase, traduzindo automaticamente para pt-BR.
 
 Uso:
   python rss_boletins.py
@@ -15,9 +15,12 @@ Agendamento:
   Windows → Agendador de Tarefas → rss_boletins.bat
 """
 
+import html
 import json
 import os
 import sys
+import time
+import urllib.parse
 import urllib.request
 import urllib.error
 import xml.etree.ElementTree as ET
@@ -45,34 +48,67 @@ def _load_dotenv():
 
 _load_dotenv()
 
-PB_URL       = os.getenv("PB_URL",      "http://127.0.0.1:8090")
-PB_EMAIL     = os.getenv("PB_EMAIL",    "")
-PB_PASSWORD  = os.getenv("PB_PASSWORD", "")
+PB_URL          = os.getenv("PB_URL",          "http://127.0.0.1:8090")
+PB_EMAIL        = os.getenv("PB_EMAIL",        "")
+PB_PASSWORD     = os.getenv("PB_PASSWORD",     "")
+MYMEMORY_EMAIL  = os.getenv("MYMEMORY_EMAIL",  "")  # opcional: aumenta limite para 10k palavras/dia
 
-EXPIRA_HORAS      = int(os.getenv("RSS_EXPIRA_HORAS",   "48"))  # news expira em X horas
-MAX_POR_FEED      = int(os.getenv("RSS_MAX_POR_FEED",   "5"))   # máx itens novos por feed por execução
-HTTP_TIMEOUT      = 15   # segundos
+EXPIRA_HORAS    = int(os.getenv("RSS_EXPIRA_HORAS", "48"))  # notícia expira em X horas
+MAX_POR_FEED    = int(os.getenv("RSS_MAX_POR_FEED",  "5"))  # máx itens novos por feed por execução
+HTTP_TIMEOUT    = 15  # segundos
 
 STATE_FILE = Path(__file__).parent / ".rss_state.json"
 
+# lang="en" → traduz para pt-BR; lang="pt" → salva como está
 FEEDS = [
     {
         "nome": "The Hacker News",
         "url":  "https://feeds.feedburner.com/TheHackersNews",
+        "lang": "en",
     },
     {
         "nome": "BleepingComputer",
         "url":  "https://www.bleepingcomputer.com/feed/",
+        "lang": "en",
     },
     {
         "nome": "SANS ISC",
         "url":  "https://isc.sans.edu/rssfeed.xml",
+        "lang": "en",
     },
     {
         "nome": "CISA Alerts",
         "url":  "https://www.cisa.gov/uscert/ncas/alerts.xml",
+        "lang": "en",
     },
 ]
+
+# ── Tradução (MyMemory — gratuito, sem chave) ────────────────────────────────
+
+def traduzir(texto: str) -> str:
+    """Traduz de inglês para pt-BR via MyMemory. Retorna original se falhar."""
+    texto = texto.strip()
+    if not texto:
+        return texto
+
+    params = {"q": texto, "langpair": "en|pt-BR"}
+    if MYMEMORY_EMAIL:
+        params["de"] = MYMEMORY_EMAIL
+
+    url = "https://api.mymemory.translated.net/get?" + urllib.parse.urlencode(params)
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "TV-Corporativa-RSS/1.0"})
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+            data = json.loads(resp.read())
+        if data.get("responseStatus") == 200:
+            traduzido = data["responseData"]["translatedText"].strip()
+            # MyMemory às vezes retorna o texto em maiúsculas quando não tem confiança
+            if traduzido and traduzido != texto.upper():
+                return traduzido
+    except Exception as e:
+        print(f"    [tradução] erro: {e}", flush=True)
+
+    return texto  # fallback: original
 
 # ── Estado de deduplicação ───────────────────────────────────────────────────
 
@@ -86,7 +122,6 @@ def load_state() -> set:
     return set()
 
 def save_state(seen: set):
-    # mantém apenas os últimos 2000 GUIDs para não crescer indefinidamente
     seen_list = list(seen)[-2000:]
     STATE_FILE.write_text(
         json.dumps({"seen": seen_list, "updated": datetime.now().isoformat()}, indent=2),
@@ -109,7 +144,7 @@ def parse_feed(xml_bytes: bytes) -> list[dict]:
 
     # RSS 2.0
     for item in root.findall(".//item"):
-        title = (item.findtext("title") or "").strip()
+        title = html.unescape((item.findtext("title") or "").strip())
         link  = (item.findtext("link")  or "").strip()
         guid  = (item.findtext("guid")  or link or title).strip()
         if title:
@@ -118,7 +153,7 @@ def parse_feed(xml_bytes: bytes) -> list[dict]:
     # Atom (se RSS não encontrou nada)
     if not items:
         for entry in root.findall(f".//{{{_ATOM_NS}}}entry"):
-            title = (entry.findtext(f"{{{_ATOM_NS}}}title") or "").strip()
+            title = html.unescape((entry.findtext(f"{{{_ATOM_NS}}}title") or "").strip())
             link_el = entry.find(f"{{{_ATOM_NS}}}link")
             link = (link_el.get("href", "") if link_el is not None else "").strip()
             guid = (entry.findtext(f"{{{_ATOM_NS}}}id") or link or title).strip()
@@ -176,9 +211,9 @@ def main():
         sys.exit(1)
 
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
-    print(f"[{ts}] Importando RSS de cibersegurança...", flush=True)
+    print(f"[{ts}] Importando RSS de cibersegurança (com tradução pt-BR)...", flush=True)
 
-    seen = load_state()
+    seen  = load_state()
     total = 0
 
     try:
@@ -210,12 +245,25 @@ def main():
             if item["guid"] in seen:
                 continue
 
+            titulo_original = item["title"]
+
+            # Traduz apenas feeds em inglês
+            if feed.get("lang", "en") == "en":
+                titulo = traduzir(titulo_original)
+                time.sleep(0.5)  # respeita rate limit da API de tradução
+            else:
+                titulo = titulo_original
+
             try:
-                criar_boletim(token, item["title"])
+                criar_boletim(token, titulo)
                 seen.add(item["guid"])
                 novos += 1
                 total += 1
-                print(f"    + {item['title'][:90]}", flush=True)
+                if titulo != titulo_original:
+                    print(f"    + {titulo[:80]}", flush=True)
+                    print(f"      (orig: {titulo_original[:70]})", flush=True)
+                else:
+                    print(f"    + {titulo[:80]}", flush=True)
             except Exception as e:
                 print(f"    Erro ao criar boletim: {e}", flush=True)
 
