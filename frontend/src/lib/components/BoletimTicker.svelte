@@ -7,7 +7,7 @@
   let trackWidth = 0;
 
   $: texto = $boletimItems.map(p => p.titulo).join('     •     ');
-  $: duracao = Math.max(20, texto.length * 0.18);
+  $: duracao = Math.max(30, texto.length * 0.25);
 
   // Recalcula larguras quando o texto muda
   $: if (texto && containerEl && trackEl) {
@@ -42,7 +42,7 @@
         class="ticker-track whitespace-nowrap"
         style="animation-duration: {duracao}s; --start: {startX}px; --end: {endX}px;"
       >
-        <span class="text-black text-3xl font-bold px-4">
+        <span class="text-black text-5xl font-bold px-4">
           {texto}
         </span>
       </div>
