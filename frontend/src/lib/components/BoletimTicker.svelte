@@ -6,11 +6,11 @@
   let containerWidth = 0;
   let trackWidth = 0;
 
-  $: texto = $boletimItems.map(p => p.titulo).join('     •     ');
-  $: duracao = Math.max(30, texto.length * 0.25);
+  $: totalChars = $boletimItems.reduce((s, p) => s + p.titulo.length, 0);
+  $: duracao = Math.max(30, totalChars * 0.25);
 
-  // Recalcula larguras quando o texto muda
-  $: if (texto && containerEl && trackEl) {
+  // Recalcula larguras quando os itens mudam
+  $: if ($boletimItems && containerEl && trackEl) {
     containerWidth = containerEl.offsetWidth;
     trackWidth = trackEl.offsetWidth;
   }
@@ -36,15 +36,16 @@
     bind:this={containerEl}
     class="flex-1 flex items-center overflow-hidden bg-white"
   >
-    {#if texto}
+    {#if $boletimItems.length > 0}
       <div
         bind:this={trackEl}
         class="ticker-track whitespace-nowrap"
         style="animation-duration: {duracao}s; --start: {startX}px; --end: {endX}px;"
       >
-        <span class="text-black text-5xl font-bold px-4">
-          {texto}
-        </span>
+        {#each $boletimItems as item, i}
+          <span class="text-black text-5xl font-bold" style="padding: 0 5rem;">{item.titulo}</span>
+          <span class="text-black/25 text-5xl font-light">•</span>
+        {/each}
       </div>
     {:else}
       <span class="text-black/30 text-sm px-4">Nenhum conteúdo configurado.</span>
