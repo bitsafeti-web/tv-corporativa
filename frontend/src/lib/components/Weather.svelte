@@ -8,31 +8,31 @@
   <div class="flex flex-col h-full">
 
     <!-- Clima atual -->
-    <div class="flex items-center gap-4 flex-shrink-0 mb-3">
+    <div class="flex items-center gap-5 flex-shrink-0 mb-4">
 
       <!-- Ícone animado -->
       <div class="relative flex-shrink-0">
-        <div class="absolute inset-0 rounded-full blur-xl opacity-40 animate-pulse"
+        <div class="absolute inset-0 rounded-full blur-xl opacity-50 animate-pulse"
           style="background: radial-gradient(circle, #fbbf24, transparent);"></div>
-        <span class="relative text-5xl weather-icon">{$weather.icone}</span>
+        <span class="relative text-7xl weather-icon">{$weather.icone}</span>
       </div>
 
       <div class="flex flex-col">
         <!-- Temperatura com brilho -->
-        <div class="flex items-baseline gap-1">
-          <span class="text-5xl font-black text-white leading-none temp-glow">{$weather.temp}°</span>
-          <span class="text-white/40 text-base">C</span>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-7xl font-black text-white leading-none temp-glow">{$weather.temp}°</span>
+          <span class="text-white/60 text-2xl font-bold">C</span>
         </div>
-        <div class="text-white/60 text-xs capitalize mt-0.5">{$weather.descricao}</div>
+        <div class="text-white/80 text-base capitalize mt-1">{$weather.descricao}</div>
 
         <!-- Umidade e vento com ícones animados -->
-        <div class="flex gap-3 mt-1.5">
-          <div class="flex items-center gap-1 text-blue-300/70 text-xs">
-            <span class="drop-animate">💧</span>
+        <div class="flex gap-4 mt-2">
+          <div class="flex items-center gap-1.5 text-blue-300 text-sm font-medium">
+            <span class="drop-animate text-base">💧</span>
             <span>{$weather.umidade}%</span>
           </div>
-          <div class="flex items-center gap-1 text-white/50 text-xs">
-            <span class="wind-animate">💨</span>
+          <div class="flex items-center gap-1.5 text-white/70 text-sm font-medium">
+            <span class="wind-animate text-base">💨</span>
             <span>{$weather.vento} km/h</span>
           </div>
         </div>
@@ -40,20 +40,20 @@
     </div>
 
     <!-- Divisor animado -->
-    <div class="divider-glow mb-3 flex-shrink-0"></div>
+    <div class="divider-glow mb-4 flex-shrink-0"></div>
 
     <!-- Previsão horária -->
     {#if $forecastItems.length > 0}
       <div class="flex flex-col flex-1 min-h-0 justify-between items-center">
         {#each $forecastItems.slice(0, 7) as item, i}
-          <div class="flex items-center text-xs forecast-row gap-6"
+          <div class="flex items-center text-sm forecast-row gap-5 w-full"
             style="animation-delay: {i * 60}ms;">
-            <span class="text-white/30" style="width: 2.8rem;">{item.hora}</span>
-            <span class="text-3xl forecast-icon" style="width: 2.2rem; text-align: center;">{item.icone}</span>
-            <div class="flex gap-1">
-              <span class="text-white/70 font-semibold">{item.temp}°</span>
-              <span class="text-white/25">/</span>
-              <span class="text-white/30">{item.tempMin}°</span>
+            <span class="text-white/60 font-medium" style="width: 3.2rem;">{item.hora}</span>
+            <span class="text-4xl forecast-icon" style="width: 2.8rem; text-align: center;">{item.icone}</span>
+            <div class="flex gap-1.5 items-baseline">
+              <span class="text-white/90 font-bold text-base">{item.temp}°</span>
+              <span class="text-white/40">/</span>
+              <span class="text-white/50 text-sm">{item.tempMin}°</span>
             </div>
           </div>
         {/each}
