@@ -46,14 +46,14 @@
     {#if $forecastItems.length > 0}
       <div class="flex flex-col flex-1 min-h-0 justify-between items-center">
         {#each $forecastItems.slice(0, 7) as item, i}
-          <div class="flex items-center text-sm forecast-row gap-5 w-full"
+          <div class="flex items-center forecast-row gap-6 w-full"
             style="animation-delay: {i * 60}ms;">
-            <span class="text-white/60 font-medium" style="width: 3.2rem;">{item.hora}</span>
-            <span class="text-4xl forecast-icon" style="width: 2.8rem; text-align: center;">{item.icone}</span>
-            <div class="flex gap-1.5 items-baseline">
-              <span class="text-white/90 font-bold text-base">{item.temp}°</span>
-              <span class="text-white/40">/</span>
-              <span class="text-white/50 text-sm">{item.tempMin}°</span>
+            <span class="text-white/70 font-semibold text-xl" style="width: 4rem;">{item.hora}</span>
+            <span class="text-5xl forecast-icon" style="width: 3.5rem; text-align: center;">{item.icone}</span>
+            <div class="flex gap-2 items-baseline">
+              <span class="text-white/95 font-black text-2xl">{item.temp}°</span>
+              <span class="text-white/40 text-lg">/</span>
+              <span class="text-white/55 text-xl">{item.tempMin}°</span>
             </div>
           </div>
         {/each}
