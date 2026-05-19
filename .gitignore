@@ -11,6 +11,10 @@ frontend/.env
 frontend/.env.development
 frontend/.env.production
 
+# RSS Boletins — estado e credenciais locais
+backend/.env.rss
+backend/.rss_state.json
+
 # OS
 .DS_Store
 Thumbs.db
