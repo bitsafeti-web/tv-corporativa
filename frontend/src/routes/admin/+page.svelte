@@ -9,7 +9,7 @@
   import CalendarGrid from './CalendarGrid.svelte';
   const PB_URL = PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
 
-  type Section = 'dashboard' | 'usuarios' | 'boletins' | 'campanha' | 'configuracoes' | 'destaque' | 'calendario';
+  type Section = 'dashboard' | 'usuarios' | 'boletins' | 'campanha' | 'configuracoes' | 'calendario';
   let section: Section = 'dashboard';
 
   // dados
@@ -17,7 +17,6 @@
   let superAdmins:  any[] = [];
   let boletins:  any[] = [];
   let campanhas: any[] = [];
-  let destaques: any[] = [];
   let datas:     any[] = [];
   let config:    any   = null;
   let loading = false;
@@ -56,7 +55,6 @@
   // forms
   let fBoletim   = { titulo: '', ordem: 0, ativo: true, publica_em: '', expira_em: '' };
   let fCampanha  = { titulo: '', ativo: true, imagem: null as File | null, imagemAtual: '', imagemErro: '', publica_em: '', expira_em: '', previewUrl: '', collectionId: '', recordId: '' };
-  let fDestaque  = { titulo: '', ativo: true, expira_em: '', publica_em: '' };
   let fUsuario     = { name: '', email: '', password: '', verified: true, emailVisibility: false, avatar: null as File | null };
   let fSuperAdmin  = { email: '', password: '' };
   let editingSuperAdmin = false;
@@ -204,14 +202,13 @@
     loading = true;
     try {
       if (isSuperuser) await ensureDatasComemorativas().catch(() => {});
-      const [rUsers, rSuperAdmins, rBol, rCamp, rDest, rDatas, rCfg, rPbSettings] = await Promise.all([
+      const [rUsers, rSuperAdmins, rBol, rCamp, rDatas, rCfg, rPbSettings] = await Promise.all([
         pb.collection('Usuarios').getList(1, 100, { sort: 'name' }).catch(() => ({ items: [] })),
         isSuperuser
           ? pb.collection('_superusers').getList(1, 100, { sort: 'email' }).catch((e) => { console.error('_superusers:', e); return { items: [] }; })
           : Promise.resolve({ items: [] }),
         pb.collection('Boletins').getList(1, 100, { sort: 'ordem' }).catch(() => ({ items: [] })),
         pb.collection('Campanha').getList(1, 100, { sort: 'titulo' }).catch((e) => { console.error('campanha:', e); return { items: [] }; }),
-        pb.collection('Destaque').getList(1, 100, { sort: 'titulo' }).catch((e) => { console.error('destaque:', e); return { items: [] }; }),
         pb.collection('DatasComemorativas').getFullList({ sort: 'data' }).catch(() => []),
         pb.collection('Configuracoes').getList(1, 1).catch(() => ({ items: [] })),
         isSuperuser ? pb.send('/api/settings', { method: 'GET' }).catch(() => null) : Promise.resolve(null),
@@ -220,7 +217,6 @@
       superAdmins = rSuperAdmins.items;
       boletins  = rBol.items;
       campanhas = rCamp.items;
-      destaques = rDest.items;
       datas     = rDatas as any[];
       config    = rCfg.items[0] ?? null;
       pbSettings = rPbSettings;
@@ -236,7 +232,6 @@
     formError = '';
     if (sec === 'boletins')     fBoletim  = { titulo: '', ordem: boletins.length + 1, ativo: true, publica_em: '', expira_em: '' };
     if (sec === 'campanha')     fCampanha = { titulo: '', ativo: true, imagem: null, imagemAtual: '', imagemErro: '', publica_em: '', expira_em: '', previewUrl: '', collectionId: '', recordId: '' };
-    if (sec === 'destaque')     fDestaque = { titulo: '', ativo: true, expira_em: '', publica_em: '' };
     if (sec === 'calendario')   fData     = { titulo: '', data: '', descricao: '', ativo: true, antecedencia_dias: 7, cor: '#7b0000' };
     if (sec === 'usuarios')     fUsuario  = { name: '', email: '', password: '', verified: true, emailVisibility: false, avatar: null };
     if (sec === 'configuracoes') loadConfigForm();
@@ -274,7 +269,6 @@
       const preview  = filename ? `${PB_URL}/api/files/${colId}/${recId}/${filename}` : '';
       fCampanha = { titulo: item.titulo, ativo: item.ativo, imagem: null, imagemAtual: filename, imagemErro: '', publica_em: item.publica_em ? item.publica_em.slice(0,16) : '', expira_em: item.expira_em ? item.expira_em.slice(0,16) : '', previewUrl: preview, collectionId: colId, recordId: recId };
     }
-    if (sec === 'destaque')     fDestaque = { titulo: item.titulo, ativo: item.ativo, expira_em: item.expira_em ? item.expira_em.slice(0,16) : '', publica_em: item.publica_em ? item.publica_em.slice(0,16) : '' };
     if (sec === 'calendario')   fData     = { titulo: item.titulo, data: item.data ? item.data.slice(0,10) : '', descricao: item.descricao ?? '', ativo: item.ativo, antecedencia_dias: item.antecedencia_dias ?? 7, cor: item.cor || '#7b0000' };
     if (sec === 'usuarios')     fUsuario  = { name: item.name, email: item.email, password: '', verified: item.verified ?? true, emailVisibility: item.emailVisibility ?? false, avatar: null };
     if (sec === 'configuracoes') loadConfigForm();
@@ -506,14 +500,6 @@
         }
       }
 
-      else if (sec === 'destaque') {
-        const data: any = { titulo: fDestaque.titulo, ativo: fDestaque.ativo };
-        if (fDestaque.expira_em)  data.expira_em  = toDbDate(fDestaque.expira_em);
-        if (fDestaque.publica_em) data.publica_em = toDbDate(fDestaque.publica_em);
-        editingId ? await pb.collection('Destaque').update(editingId, data, noAutoCancel)
-                  : await pb.collection('Destaque').create(data, noAutoCancel);
-      }
-
       else if (sec === 'usuarios') {
         const fd = new FormData();
         fd.append('name', fUsuario.name);
@@ -674,7 +660,6 @@
     ...datas,
     ...postCalendarEvents(campanhas, 'Campanha', '#7c3aed'),
     ...postCalendarEvents(boletins, 'Boletim', '#0369a1'),
-    ...postCalendarEvents(destaques, 'Destaque', '#f97316'),
   ];
 
   function diasRestantes(iso: string): number {
@@ -687,7 +672,6 @@
     dashboard:    `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`,
     campanha:     `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>`,
     boletins:     `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>`,
-    destaque:     `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
     usuarios:     `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
     configuracoes:`<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
     calendario:   `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8.01" y2="14"/><line x1="12" y1="14" x2="12.01" y2="14"/><line x1="16" y1="14" x2="16.01" y2="14"/><line x1="8" y1="18" x2="8.01" y2="18"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`,
@@ -698,7 +682,6 @@
     { id: 'dashboard',    label: 'Dashboard'    },
     { id: 'campanha',     label: 'Campanhas'    },
     { id: 'boletins',     label: 'Boletins'     },
-    { id: 'destaque',     label: 'Destaque'     },
     { id: 'calendario',   label: 'Calendário'   },
     { id: 'usuarios',     label: 'Usuários'     },
     { id: 'configuracoes',label: 'Configurações'},
@@ -866,14 +849,12 @@
       {#if section === 'dashboard'}
 
         <!-- Cards de contagem -->
-        <div style="display:grid;grid-template-columns:repeat({isSuperuser ? 4 : 3},1fr);gap:16px;margin-bottom:28px;">
+        <div style="display:grid;grid-template-columns:repeat({isSuperuser ? 3 : 2},1fr);gap:16px;margin-bottom:28px;">
           {#each [
             {label:'Campanhas', value:campanhas.length, color:'#7c3aed', sec:'campanha', adminOnly: false,
               icon:'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>'},
             {label:'Boletins',  value:boletins.length,  color:'#0369a1', sec:'boletins', adminOnly: false,
               icon:'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>'},
-            {label:'Destaques', value:destaques.length, color:'#f97316', sec:'destaque', adminOnly: false,
-              icon:'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'},
             {label:'Usuários',  value:usuarios.length,  color:'#7b0000', sec:'usuarios', adminOnly: true,
               icon:'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'},
           ].filter(c => isSuperuser || !c.adminOnly) as card}
@@ -943,7 +924,6 @@
           {#each [
             {label:'Últimas campanhas', items:campanhas, sec:'campanha'},
             {label:'Últimos boletins',  items:boletins,  sec:'boletins'},
-            {label:'Últimos destaques', items:destaques, sec:'destaque'},
           ] as bloco}
             <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden;">
               <div style="padding:16px 20px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
@@ -1003,17 +983,6 @@
           on:toggle={(e) => handleToggle('Campanha', e)}
           on:delete={(e) => handleDelete('Campanha', e)}
           on:bulkDelete={(e) => handleBulkDelete('Campanha', e)}
-        />
-
-      <!-- DESTAQUE -->
-      {:else if section === 'destaque'}
-        <GenericTable {loading} items={destaques} dropdownActions
-          cols={[{key:'titulo',label:'Título'},{key:'publica_em',label:'Postagem'},{key:'expira_em',label:'Expiração'},{key:'ativo',label:'Status',toggle:true}]}
-          on:new={() => openNew('destaque')}
-          on:edit={(e) => openEdit('destaque', e.detail)}
-          on:toggle={(e) => handleToggle('Destaque', e)}
-          on:delete={(e) => handleDelete('Destaque', e)}
-          on:bulkDelete={(e) => handleBulkDelete('Destaque', e)}
         />
 
       <!-- CALENDÁRIO -->
@@ -1246,26 +1215,6 @@
   <div style="display:flex;gap:10px;justify-content:flex-end;">
     <button on:click={closeModal} style="{btn}background:rgba(107,114,128,0.08);color:#374151;">Cancelar</button>
     <button on:click={() => save('campanha')} disabled={saving} style="{btn}background:rgba(123,0,0,0.08);color:#7b0000;opacity:{saving?0.7:1};">
-      {saving?'Salvando...':'Salvar'}
-    </button>
-  </div>
-</Modal>
-
-<!-- Destaque -->
-<Modal title={modalTitle} open={modalOpen && section==='destaque'} on:close={closeModal}>
-  <label style={lbl}>Título *</label>
-  <input bind:value={fDestaque.titulo} style={inp} placeholder="Título do destaque" />
-  <label style={lbl}>Publica em</label>
-  <input type="datetime-local" bind:value={fDestaque.publica_em} style={inp} />
-  <label style={lbl}>Expira em</label>
-  <input type="datetime-local" bind:value={fDestaque.expira_em} style={inp} />
-  <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;margin-bottom:20px;cursor:pointer;">
-    <input type="checkbox" bind:checked={fDestaque.ativo} style="accent-color:#7b0000;" /> Ativo
-  </label>
-  {#if formError}<p style="color:#ef4444;font-size:12px;margin-bottom:12px;">{formError}</p>{/if}
-  <div style="display:flex;gap:10px;justify-content:flex-end;">
-    <button on:click={closeModal} style="{btn}background:rgba(107,114,128,0.08);color:#374151;">Cancelar</button>
-    <button on:click={() => save('destaque')} disabled={saving} style="{btn}background:rgba(123,0,0,0.08);color:#7b0000;opacity:{saving?0.7:1};">
       {saving?'Salvando...':'Salvar'}
     </button>
   </div>

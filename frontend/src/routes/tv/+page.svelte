@@ -5,7 +5,6 @@
   import ClockCard from '$lib/components/ClockCard.svelte';
   import Weather from '$lib/components/Weather.svelte';
   import Campanha from '$lib/components/Campanha.svelte';
-  import Destaques from '$lib/components/Destaques.svelte';
   import BoletimTicker from '$lib/components/BoletimTicker.svelte';
   import Maintenance from '$lib/components/Maintenance.svelte';
   import DateNotification from '$lib/components/DateNotification.svelte';
@@ -14,14 +13,12 @@
   import { subscribeToDatasComemorativas, datasProximas } from '$lib/stores/datas';
   import { startCalendarUpdates } from '$lib/stores/gcal';
   import { subscribeToCampanha } from '$lib/stores/campanha';
-  import { subscribeToDestaques } from '$lib/stores/destaques';
   import { subscribeToBoletim } from '$lib/stores/boletim';
 
   let stopWeather: () => void;
   let stopConfig: () => void;
   let stopCalendar: () => void;
   let stopCampanha: () => void;
-  let stopDestaques: () => void;
   let stopBoletim: () => void;
   let stopDatas: () => void;
 
@@ -30,7 +27,6 @@
     stopConfig   = subscribeToConfig();
     stopWeather  = startWeatherUpdates();
     stopCampanha = subscribeToCampanha();
-    stopDestaques = subscribeToDestaques();
     stopBoletim  = subscribeToBoletim();
     stopDatas    = subscribeToDatasComemorativas();
   });
@@ -46,7 +42,6 @@
     stopConfig?.();
     stopCalendar?.();
     stopCampanha?.();
-    stopDestaques?.();
     stopBoletim?.();
     stopDatas?.();
   });
@@ -78,13 +73,8 @@
         <div class="w-72 flex-shrink-0 flex flex-col gap-3">
 
           <!-- Clima + Previsão -->
-          <div class="glass rounded-2xl p-4 overflow-hidden min-h-0" style="flex: 0 0 70%;">
+          <div class="glass rounded-2xl p-4 overflow-hidden min-h-0" style="flex: 1;">
             <Weather />
-          </div>
-
-          <!-- Destaques -->
-          <div class="glass-dark rounded-2xl p-4 min-h-0 overflow-hidden" style="flex: 0 0 30%;">
-            <Destaques />
           </div>
 
         </div>
