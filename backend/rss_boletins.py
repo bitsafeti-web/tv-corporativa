@@ -61,6 +61,18 @@ STATE_FILE = Path(__file__).parent / ".rss_state.json"
 
 # lang="en" → traduz para pt-BR; lang="pt" → salva como está
 FEEDS = [
+    # ── Brasil (pt) ──────────────────────────────────────────────────
+    {
+        "nome": "CISO Advisor",
+        "url":  "https://cisoadvisor.com.br/feed/",
+        "lang": "pt",
+    },
+    {
+        "nome": "TI Inside",
+        "url":  "https://tiinside.com.br/feed/",
+        "lang": "pt",
+    },
+    # ── Internacional (en → traduzido para pt-BR) ────────────────────
     {
         "nome": "The Hacker News",
         "url":  "https://feeds.feedburner.com/TheHackersNews",
@@ -69,6 +81,21 @@ FEEDS = [
     {
         "nome": "BleepingComputer",
         "url":  "https://www.bleepingcomputer.com/feed/",
+        "lang": "en",
+    },
+    {
+        "nome": "Dark Reading",
+        "url":  "https://www.darkreading.com/rss.xml",
+        "lang": "en",
+    },
+    {
+        "nome": "Krebs on Security",
+        "url":  "https://krebsonsecurity.com/feed/",
+        "lang": "en",
+    },
+    {
+        "nome": "SecurityWeek",
+        "url":  "https://feeds.feedburner.com/securityweek",
         "lang": "en",
     },
     {
