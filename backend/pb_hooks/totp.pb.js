@@ -297,6 +297,7 @@ routerAdd("POST", "/api/totp/auth", function(e) {
         var body           = JSON.parse(toString(e.request.body) || '{}');
         var email          = String(body["email"]           || "").trim();
         var password       = String(body["password"]        || "").trim();
+        var totpCode       = String(body["totp_code"]       || "").trim();
         var recaptchaToken = String(body["recaptcha_token"] || "").trim();
         var recaptchaSecret = "";
         var recaptchaBypass = false;
@@ -349,6 +350,29 @@ routerAdd("POST", "/api/totp/auth", function(e) {
 
         if (!record.validatePassword(password)) {
             return e.json(401, { message: "Credenciais inválidas." });
+        }
+
+        var totpSecret = "";
+        try {
+            var totpRec = $app.findFirstRecordByFilter(
+                "totp_secrets", "user_id = {:u}", { u: record.id }
+            );
+            totpSecret = totpRec.get("secret") || "";
+        } catch (_) { /* sem TOTP configurado */ }
+
+        if (totpSecret) {
+            if (!totpCode) {
+                return e.json(400, {
+                    message: "Codigo 2FA obrigatorio.",
+                    requires_totp: true
+                });
+            }
+            if (!globalThis._verifyTOTP(totpSecret, totpCode)) {
+                return e.json(401, {
+                    message: "Codigo 2FA invalido.",
+                    requires_totp: true
+                });
+            }
         }
 
         var token = record.newAuthToken();

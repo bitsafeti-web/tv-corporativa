@@ -3,7 +3,7 @@
   export let empresa: string = '';
 </script>
 
-<div class="fixed inset-0 z-50 flex" style="font-family: 'Inter', sans-serif;">
+<div class="fixed inset-0 z-50 flex" style="font-family: 'Poppins', sans-serif;">
 
   <!-- Faixa vermelha esquerda -->
   <div class="relative flex-shrink-0 flex flex-col items-center justify-between py-16 px-8"

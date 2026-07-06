@@ -5,13 +5,8 @@ export const config = writable<Configuracao | null>(null);
 
 const DEFAULT_CONFIG: Partial<Configuracao> = {
   nome_empresa: 'Bitsafe',
-  fuso_horario: 'America/Sao_Paulo',
-  cidade: '',
-  pais: 'BR',
   modo_manutencao: false,
   mensagem_manutencao: 'Sistema em manutenção. Voltamos em breve.',
-  ticker_ativo: false,
-  ticker_texto: ''
 };
 
 // Store com fallback para defaults quando configuração não está carregada

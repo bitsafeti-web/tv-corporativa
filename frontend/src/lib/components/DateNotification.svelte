@@ -92,7 +92,7 @@
     border-radius:16px;
     overflow:hidden;
     box-shadow:0 32px 80px rgba(0,0,0,0.5);
-    font-family:'Inter',sans-serif;
+    font-family:'Poppins',sans-serif;
     animation: slideIn .4s cubic-bezier(0.16,1,0.3,1);
   ">
     <!-- topo colorido -->

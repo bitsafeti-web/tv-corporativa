@@ -8,7 +8,7 @@ export type Post = {
   id: string;
   titulo: string;
   conteudo: string;
-  tipo: 'aviso' | 'comunicado' | 'evento' | 'urgente' | 'campanha' | 'destaque' | 'boletim';
+  tipo: 'aviso' | 'comunicado' | 'evento' | 'urgente' | 'campanha' | 'destaque';
   imagem?: string;
   ativo: boolean;
   destaque: boolean;
@@ -22,16 +22,8 @@ export type Post = {
 export type Configuracao = {
   id: string;
   nome_empresa: string;
-  cidade: string;
-  pais: string;
-  fuso_horario: string;
-  weather_api_key: string;
-  google_api_key: string;
-  google_calendar_id: string;
   modo_manutencao: boolean;
   mensagem_manutencao: string;
-  ticker_ativo: boolean;
-  ticker_texto: string;
 };
 
 export type CampanhaItem = {
@@ -40,6 +32,7 @@ export type CampanhaItem = {
   collectionName: string;
   titulo: string;
   imagem_1568x876px?: string;
+  video?: string;
   ativo: boolean;
   publica_em?: string;
   expira_em?: string;
@@ -53,17 +46,6 @@ export type DestaqueItem = {
   ativo: boolean;
   expira_em?: string;
   publica_em?: string;
-  created: string;
-  updated: string;
-};
-
-export type BoletimItem = {
-  id: string;
-  titulo: string;
-  ativo: boolean;
-  ordem: number;
-  publica_em?: string;
-  expira_em?: string;
   created: string;
   updated: string;
 };

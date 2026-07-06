@@ -1,177 +1,136 @@
-# TV Corporativa Bitsafe — Contexto do Projeto
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## O que é este projeto
 
-Sistema de **TV Corporativa** para exibição interna da Bitsafe. Substitui uma instalação WordPress/Elementor por uma stack moderna.
-
-A tela fica aberta em fullscreen num navegador (modo kiosk) numa TV da empresa e exibe:
-- Relógio em tempo real com fuso horário
-- Data completa em português
-- Clima (temperatura, descrição, umidade, vento)
-- Feed rotativo de comunicados/avisos postados pelo time
+Sistema de **TV Corporativa** Bitsafe — tela fullscreen em kiosk mode exibindo relógio, clima, comunicados e ticker de boletins de segurança. Stack: SvelteKit (frontend) + PocketBase (backend/admin/realtime).
 
 ---
 
-## Stack
+## Commands
 
-| Camada | Tecnologia | Motivo |
-|--------|-----------|--------|
-| Frontend (TV) | SvelteKit + Tailwind CSS | Leve, reativo, perfeito para displays 24/7 |
-| Backend + Admin | PocketBase | Painel admin embutido, tempo real nativo, SQLite |
-| Banco de dados | SQLite (via PocketBase) | Simples, histórico completo, zero config |
-| Clima | OpenWeatherMap API (gratuita) | Integração direta no frontend |
-| Tempo real | PocketBase Realtime (SSE) | TV atualiza sozinha sem F5 |
+**IMPORTANTE:** A máquina de dev tem `NODE_ENV=production` globalmente. Usar sempre `dev.bat` ou forçar `set NODE_ENV=development` antes de qualquer `npm` command. Para instalar dependências: `npm install --include=dev`.
 
----
-
-## Estrutura de Diretórios
-
-```
-tv-corporativa/
-├── CLAUDE.md                   ← este arquivo
-├── README.md                   ← instruções de setup
-├── frontend/                   ← SvelteKit (tela da TV)
-│   ├── dev.bat                 ← script para rodar em dev no Windows
-│   ├── .env                    ← variáveis de ambiente (API key clima, URL PocketBase)
-│   ├── .env.example            ← template do .env
-│   ├── package.json
-│   ├── svelte.config.js
-│   ├── vite.config.ts
-│   ├── tailwind.config.js
-│   ├── postcss.config.js
-│   ├── tsconfig.json
-│   ├── static/
-│   └── src/
-│       ├── app.html            ← HTML base (fontes Google, meta tags)
-│       ├── app.css             ← Tailwind + utilitários globais (glass, text-shadow)
-│       ├── routes/
-│       │   ├── +layout.svelte  ← importa app.css
-│       │   └── +page.svelte    ← tela principal da TV (layout completo)
-│       └── lib/
-│           ├── pocketbase.ts   ← client PocketBase + tipos Post, Configuracao
-│           ├── components/
-│           │   ├── Clock.svelte        ← relógio HH:MM:SS reativo
-│           │   ├── DateDisplay.svelte  ← data em pt-BR
-│           │   ├── Weather.svelte      ← clima com ícones emoji
-│           │   └── PostsFeed.svelte    ← feed rotativo de posts (8s por post)
-│           └── stores/
-│               ├── clock.ts    ← store readable que atualiza a cada 1s
-│               ├── weather.ts  ← fetch clima a cada 10min, store writable
-│               └── posts.ts    ← carrega posts do PocketBase + subscribe realtime
-└── backend/
-    ├── start.bat               ← inicia o PocketBase no Windows
-    ├── pocketbase.exe          ← binário (baixar em pocketbase.io/docs)
-    └── pb_migrations/
-        └── 001_initial_schema.js ← schema da coleção posts
-```
-
----
-
-## Coleção PocketBase: `posts`
-
-| Campo | Tipo | Obrigatório | Descrição |
-|-------|------|-------------|-----------|
-| `titulo` | Text | Sim | Título do comunicado (max 200 chars) |
-| `conteudo` | Editor | Sim | Corpo do texto |
-| `tipo` | Select | Sim | `aviso`, `comunicado`, `evento`, `urgente` |
-| `imagem` | File | Não | Imagem anexada (jpg, png, webp, gif) |
-| `ativo` | Bool | Não | Se aparece na TV (padrão: true) |
-| `destaque` | Bool | Não | Posts em destaque aparecem primeiro |
-| `expira_em` | Date | Não | Data/hora de expiração automática |
-
-Regras de acesso: leitura pública, escrita apenas para admins autenticados.
-
----
-
-## Como Rodar Localmente
-
-### Backend (PocketBase)
 ```bash
-# Baixar pocketbase.exe em https://pocketbase.io/docs e colocar em backend/
-cd backend
-./start.bat
-# Painel admin: http://127.0.0.1:8090/_/
+# Rodar localmente (orquestra PocketBase + SvelteKit com sync do banco de produção)
+dev.bat                     # na raiz do projeto
+
+# Frontend (dentro de frontend/)
+npm run dev                 # dev server (porta fixa em vite.config.ts, hoje 5174)
+npm run build               # build estático → .svelte-kit/output/
+npm run check               # TypeScript + Svelte validation
+npm run preview             # preview do build local
+
+# Backend
+backend/start.bat           # PocketBase em http://127.0.0.1:8090 (admin em /_/)
+
+# RSS de cibersegurança (Python)
+backend/rss_boletins.bat    # importa feeds → coleção Boletins (pode agendar via Task Scheduler)
 ```
 
-### Frontend (SvelteKit)
-```bash
-cd frontend
-./dev.bat
-# Ou manualmente:
-# set NODE_ENV=development && npm run dev
-# Acesse: http://localhost:5173
-```
+O dev server do Vite tem porta fixa em `frontend/vite.config.ts` (`strictPort: true`) — confira ali antes de assumir 5173.
 
-> **Atenção:** A máquina de desenvolvimento tem `NODE_ENV=production` definido globalmente.
-> Sempre usar `dev.bat` ou setar `NODE_ENV=development` antes de rodar npm commands.
-> Para instalar dependências: `npm install --include=dev`
+O frontend usa `@sveltejs/adapter-static` (SPA com fallback em `index.html`); `npm run build` gera `frontend/build/`, não `.svelte-kit/output/`.
 
 ---
 
-## Variáveis de Ambiente (`frontend/.env`)
+## Arquitetura
 
+### Rotas SvelteKit
+
+| Rota | Propósito |
+|------|-----------|
+| `/` | Login (email + senha; superusers também exigem TOTP 6 dígitos + reCAPTCHA v3) |
+| `/tv` | Exibição fullscreen só da `Campanha` (banners/vídeos rotativos) + overlay de manutenção — não mostra relógio, clima, posts ou ticker |
+| `/tela/[slug]` | Dashboard completo: relógio, clima, feed de posts (ou `MediaPlaylist` quando vazio), sidebar de Google Calendar e ticker — filtrado pela collection `telas` (`filtro_tipo`) |
+| `/admin` | Painel admin SPA — seções: Dashboard, Campanhas, Boletins RSS, Usuários (superuser), Configurações (superuser, inclui SMTP) |
+
+`/tv` e `/tela/[slug]` divergiram: features como `ComunicadosSidebar.svelte` e `DestaquesSidebar.svelte` existem no código mas não estão referenciadas em nenhuma rota — são componentes em progresso, ainda não integrados.
+
+### Stores (`frontend/src/lib/stores/`)
+
+Cada store conecta ao PocketBase com subscribe SSE (tempo real) + polling de fallback quando necessário.
+
+| Store | Atualização | Dado |
+|-------|-------------|------|
+| `clock.ts` | 1s | Hora atual |
+| `weather.ts` | 10min | Clima atual + previsão horária (OpenWeatherMap) |
+| `posts.ts` | Realtime | Feed principal separado por tipo |
+| `config.ts` | Realtime | Config global (nome empresa, modo manutenção, etc.) |
+| `boletim.ts` | Realtime | Itens do ticker inferior |
+| `campanha.ts` | Realtime + 1min poll | Imagens de campanha/banner |
+| `destaques.ts` | Realtime + 1min poll | Posts em destaque |
+| `datas.ts` | 60s | Datas comemorativas (7 dias à frente) |
+| `midia.ts` | Realtime | Playlist de mídia (fallback quando não há posts) |
+| `gcal.ts` | 30min | Eventos Google Calendar (próximos 30 dias) |
+
+### Collections PocketBase
+
+| Collection | Propósito |
+|------------|-----------|
+| `posts` | Comunicados — tipos: `aviso`, `comunicado`, `evento`, `urgente`, `campanha`, `boletim`, `destaque` |
+| `Usuarios` | Contas de usuário regulares |
+| `Configuracoes` | Config global: nome_empresa, fuso_horario, weather_api_key, google_api_key, google_calendar_id, modo_manutencao, ticker_ativo |
+| `Campanha` | Banners/vídeos rotativos (campo de arquivo `imagem_1568x876px` — nome legado; validação de dimensão exige 1920×1080px Full HD; vídeo também exige 1920×1080px e até 200MB; ativo, publica_em, expira_em) |
+| `Destaque` | Posts em destaque |
+| `Boletins` | Itens do ticker — titulo, ordem, publica_em, expira_em |
+| `DatasComemorativas` | Datas comemorativas com cor, antecedencia_dias e origem (RSS ou manual) |
+| `midia` | Playlist de fallback: imagens/vídeos com duração e ordem |
+| `telas` | Multi-tela — slug, nome, ativa, filtro_tipo (lida por `/tela/[slug]`) |
+| `totp_secrets` | Segredos TOTP dos superusers, gerenciados via hooks `totp.pb.js` |
+
+Registros com `expira_em` e `publica_em` são filtrados automaticamente nas queries PocketBase.
+
+### Tipos TypeScript
+
+Definidos em `frontend/src/lib/pocketbase.ts`: `Post`, `Configuracao`, `CampanhaItem`, `DestaqueItem`, `BoletimItem`, `Tela`, `Midia`.
+
+---
+
+## Features Não-Óbvias
+
+**Hooks PocketBase (`backend/pb_hooks/*.pb.js`)**
+- `totp.pb.js` — rotas custom `/api/totp/setup`, `/api/totp/confirm`, `/api/totp/remove`, `/api/totp/auth`; guarda segredos na collection `totp_secrets` e é o fluxo de login usado por superusers (a rota `/` do frontend tenta `Usuarios.authWithPassword` primeiro, cai para `/api/totp/auth` se não for operador)
+- `calendario_sync.pb.js` — `onRecordAfterCreateSuccess` em Campanha/Destaque/Boletins que espelha registros para `DatasComemorativas` (ver memória de projeto sobre esse sync antes de mexer em qualquer uma dessas 4 collections)
+- `smtp_config.pb.js` — expõe `/api/settings` para o admin ler/gravar config de SMTP do PocketBase (usado na aba Configurações, somente superuser)
+
+**Deploy em produção (`frontend/static_server.py`)**
+Servidor Python (sem Node) que serve `frontend/build/` como SPA e faz proxy reverso de `/api/`, `/_/` e `/pb_public/` para o PocketBase local — usado para servir o build estático no servidor de produção sem depender de `npm run preview`. Configurável via env vars `TV_FRONTEND_BUILD_DIR`, `TV_FRONTEND_PORT`, `TV_POCKETBASE_HOST/PORT`.
+
+**RSS de Cibersegurança (`backend/rss_boletins.py`)**
+Consome feeds (CISO Advisor, TI Inside, The Hacker News, etc.), traduz artigos em inglês via MyMemory API e posta no Boletins com expiração de 48h. Variáveis de ambiente em `backend/.env.rss`:
+```env
+PB_URL=http://127.0.0.1:8090
+PB_EMAIL=...
+PB_PASSWORD=...
+# RSS_EXPIRA_HORAS=48
+# RSS_MAX_POR_FEED=5
+# MYMEMORY_EMAIL=...
+```
+
+**Multi-tela**
+Posts podem ter campo `somente_telas` (slugs separados por vírgula). A rota `/tela/[slug]` filtra o feed por esse campo.
+
+**Autenticação**
+Dois níveis: `Usuarios` (email+senha) e `Superusers` (email+senha+TOTP+reCAPTCHA v3). Token PocketBase fica em `localStorage`; stores verificam auth antes de subscrever.
+
+**Modo manutenção**
+Ativado via campo `modo_manutencao` na collection `Configuracoes`. Quando ativo, exibe `Maintenance.svelte` sobreposto à tela inteira.
+
+**Design System**
+- Fundo `slate-950`, glassmorphism via `.glass` / `.glass-dark` em `app.css`
+- Animações CSS customizadas: `float` (ícone clima), `drip` (chuva), `blow` (vento), scroll do ticker
+- Layout assume fullscreen 16:9 (kiosk) — não responsivo para mobile
+
+---
+
+## Variáveis de Ambiente
+
+`frontend/.env`:
 ```env
 PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090
-PUBLIC_WEATHER_API_KEY=sua_chave_aqui
+PUBLIC_WEATHER_API_KEY=...
 PUBLIC_WEATHER_CITY=São Paulo
 PUBLIC_WEATHER_COUNTRY=BR
 ```
-
-Chave gratuita da OpenWeatherMap: https://openweathermap.org/api
-
----
-
-## Decisões de Design
-
-- **Layout fullscreen 16:9** com fundo `slate-950` e gradiente sutil azul
-- **Glassmorphism** (`.glass`, `.glass-dark`) nos cards para visual moderno
-- **Relógio** em fonte mono tamanho 8xl, segundos menores e mais opacos
-- **Feed de posts** rotaciona automaticamente a cada 8 segundos com animação `slide-up`
-- **Indicador de posts** (bolinhas) no canto superior direito do feed
-- **Badge colorido** por tipo: amarelo (aviso), azul (comunicado), verde (evento), vermelho (urgente)
-- **Indicador "Ao vivo"** no rodapé com bolinha verde pulsante
-- Posts com `expira_em` no passado são filtrados automaticamente na query do PocketBase
-
----
-
-## Funcionalidades Implementadas
-
-- [x] Relógio em tempo real (atualiza a cada 1 segundo)
-- [x] Data completa em pt-BR com dia da semana
-- [x] Clima com ícones emoji, temperatura, umidade e vento
-- [x] Feed rotativo de comunicados (8s por post)
-- [x] 4 tipos de post com cores distintas
-- [x] Posts em destaque (aparecem primeiro)
-- [x] Expiração automática de posts
-- [x] Upload de imagem por post
-- [x] Atualização em tempo real via PocketBase Realtime (sem F5)
-- [x] Histórico completo (posts inativos ficam salvos no banco)
-- [x] Painel admin para usuários não-técnicos (PocketBase built-in)
-- [x] Configurações da empresa editáveis pelo painel (collection `configuracoes`)
-- [x] Agendamento de posts (`publica_em` — só aparece a partir da data definida)
-- [x] Modo de manutenção (ativa via painel, exibe tela `Maintenance.svelte`)
-- [x] Ticker/marquee de notícias na parte inferior (configurável pelo painel)
-- [x] Suporte a múltiplas telas/locais (rota `/tela/[slug]`, collection `telas` com filtro por tipo)
-- [x] Integração com Google Calendar (eventos públicos via API, requer `google_api_key` + `google_calendar_id` na config)
-- [x] Playlist de vídeos/imagens em loop (collection `midia`, exibe quando não há posts ativos)
-
----
-
-## Histórico de Desenvolvimento
-
-### 2026-03-20 — Criação do projeto
-- Migração do WordPress + Elementor para SvelteKit + PocketBase
-- Decisão tomada pelo Guilherme (Bitsafe)
-- Motivo: modernização da stack, eliminação da dependência do WordPress
-- Rodando local por enquanto, com planos de subir para hospedagem no futuro
-- Projeto localizado em `D:\Repos\BITSAFE\SITES\tv-corporativa\`
-
-### 2026-03-20 — Implementação completa do backlog
-- Configurações da empresa via PocketBase (`configuracoes` collection)
-- Agendamento de posts com campo `publica_em`
-- Modo de manutenção com overlay fullscreen
-- Ticker/marquee configurável via painel
-- Múltiplas telas via rota `/tela/[slug]` com filtros por tipo de post
-- Google Calendar: eventos de calendário público na sidebar
-- Playlist de mídia (imagens/vídeos) exibida quando não há posts ativos
-- Posts filtrados por tela via campo `somente_telas`

@@ -2,6 +2,7 @@
 echo Iniciando PocketBase (DEV LOCAL)...
 echo Banco de dados: pb_data_dev\ (separado da producao)
 echo.
+set RECAPTCHA_BYPASS=true
 
 REM Opcional: cria/atualiza o superusuario quando as variaveis estiverem definidas
 if "%PB_SUPERUSER_EMAIL%"=="" goto skip_superuser

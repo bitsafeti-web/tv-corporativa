@@ -5,31 +5,29 @@
   import { pb, type Tela } from '$lib/pocketbase';
   import Clock from '$lib/components/Clock.svelte';
   import DateDisplay from '$lib/components/DateDisplay.svelte';
-  import Weather from '$lib/components/Weather.svelte';
   import PostsFeed from '$lib/components/PostsFeed.svelte';
-  import Ticker from '$lib/components/Ticker.svelte';
   import Maintenance from '$lib/components/Maintenance.svelte';
   import MediaPlaylist from '$lib/components/MediaPlaylist.svelte';
-  import CalendarEvents from '$lib/components/CalendarEvents.svelte';
-  import { startWeatherUpdates } from '$lib/stores/weather';
   import { subscribeToPosts, posts } from '$lib/stores/posts';
   import { subscribeToMidia } from '$lib/stores/midia';
   import { subscribeToConfig, configEfetiva } from '$lib/stores/config';
-  import { startCalendarUpdates } from '$lib/stores/gcal';
 
-  $: slug = $page.params.slug;
+  $: slug = $page.params.slug ?? '';
+  const SLUG_RE = /^[a-z0-9-]+$/i;
 
   let tela: Tela | null = null;
   let telaErro = false;
 
-  let stopWeather: () => void;
   let stopPosts: () => void;
   let stopMidia: () => void;
   let stopConfig: () => void;
-  let stopCalendar: () => void;
 
   onMount(async () => {
     if (!pb.authStore.isValid) { goto('/'); return; }
+    if (!SLUG_RE.test(slug)) {
+      telaErro = true;
+      return;
+    }
     // Carrega dados da tela pelo slug
     try {
       const records = await pb.collection('telas').getList<Tela>(1, 1, {
@@ -45,7 +43,6 @@
     }
 
     stopConfig  = subscribeToConfig();
-    stopWeather = startWeatherUpdates();
     stopMidia   = subscribeToMidia();
 
     if (tela) {
@@ -55,23 +52,14 @@
     }
   });
 
-  // Inicia Google Calendar quando config carregar
-  let calendarStarted = false;
-  $: if ($configEfetiva?.google_calendar_id && $configEfetiva?.google_api_key && !calendarStarted) {
-    calendarStarted = true;
-    stopCalendar = startCalendarUpdates($configEfetiva.google_calendar_id, $configEfetiva.google_api_key);
-  }
-
   onDestroy(() => {
-    stopWeather?.();
     stopPosts?.();
     stopMidia?.();
     stopConfig?.();
-    stopCalendar?.();
   });
 
   $: empresa   = $configEfetiva?.nome_empresa || 'Bitsafe';
-  $: timezone  = $configEfetiva?.fuso_horario || 'America/Sao_Paulo';
+  const timezone = 'America/Sao_Paulo';
   $: emManutencao = $configEfetiva?.modo_manutencao ?? false;
   $: semPosts = $posts.length === 0;
 </script>
@@ -114,9 +102,6 @@
           <DateDisplay {timezone} />
         </div>
 
-        <div class="glass rounded-2xl p-5 min-w-48">
-          <Weather />
-        </div>
       </div>
 
       <div class="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-6"></div>
@@ -135,19 +120,9 @@
           </div>
         </div>
 
-        <!-- Sidebar: Google Calendar (se configurado) -->
-        <div class="w-72 flex flex-col gap-4 overflow-hidden">
-          <CalendarEvents />
-        </div>
 
       </div>
 
-      <!-- TICKER -->
-      {#if $configEfetiva?.ticker_ativo && $configEfetiva?.ticker_texto}
-        <div class="mt-3 glass rounded-xl overflow-hidden">
-          <Ticker texto={$configEfetiva.ticker_texto} />
-        </div>
-      {/if}
 
       <!-- RODAPÉ -->
       <div class="mt-3 flex items-center justify-between text-white/20 text-xs">

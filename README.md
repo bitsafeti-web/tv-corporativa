@@ -9,7 +9,6 @@ Sistema de TV corporativa moderno construído com **SvelteKit** + **PocketBase**
 | Frontend (TV Display) | SvelteKit + Tailwind CSS |
 | Backend + Admin | PocketBase |
 | Banco de dados | SQLite (embutido no PocketBase) |
-| Clima | OpenWeatherMap API |
 | Tempo real | PocketBase Realtime (SSE) |
 
 ---
@@ -52,11 +51,11 @@ tv-corporativa/
 ```bash
 cd frontend
 npm install --include=dev
-cp .env.example .env   # edite com sua chave do clima
+cp .env.example .env
 npm run dev
 ```
 
-Acesse: **http://localhost:5173**
+Acesse: **http://localhost:5174**
 
 > **Atenção:** Se a máquina tiver `NODE_ENV=production` definido globalmente, use `dev.bat` ou
 > `set NODE_ENV=development && npm run dev`. Para instalar dependências: `npm install --include=dev`
@@ -67,32 +66,20 @@ Acesse: **http://localhost:5173**
 
 ```env
 PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090
-PUBLIC_WEATHER_API_KEY=sua_chave_aqui
-PUBLIC_WEATHER_CITY=São Paulo
-PUBLIC_WEATHER_COUNTRY=BR
 ```
 
-Chave gratuita da OpenWeatherMap: https://openweathermap.org/api
 
 ---
 
-## Configuração do Clima
-
-1. Crie conta gratuita em: https://openweathermap.org/api
-2. Copie sua API Key
-3. Edite o arquivo `frontend/.env`
-
----
 
 ## Como Gerenciar Conteúdo
 
-Acesse o painel admin customizado: **http://localhost:5173/admin**
+Acesse o painel admin customizado: **http://localhost:5174/admin**
 
 - **Posts:** criar, editar, ativar/desativar comunicados
-- **Boletins:** ticker rotativo na base da tela
 - **Campanha:** banner/destaque na tela de TV
 - **Calendário:** datas comemorativas e eventos
-- **Configurações:** SMTP, logo, modo manutenção, integrações
+- **Configurações:** SMTP, logo, modo manutenção
 - **Usuários / Superadmins:** gerenciamento de acesso
 
 ---
@@ -125,7 +112,6 @@ Fazer upload do binário `pocketbase` e da pasta `pb_data/` para o servidor.
 
 - [x] Relógio em tempo real (HH:MM:SS)
 - [x] Data completa em português
-- [x] Clima (temperatura, descrição, umidade, vento)
 - [x] Feed de comunicados com rotação automática (8s)
 - [x] Tipos: Aviso, Comunicado, Evento, Urgente
 - [x] Posts em destaque
@@ -136,10 +122,8 @@ Fazer upload do binário `pocketbase` e da pasta `pb_data/` para o servidor.
 - [x] Upload de imagens nos posts
 - [x] Painel admin customizado (SvelteKit)
 - [x] Múltiplas telas via `/tela/[slug]`
-- [x] Ticker/marquee de boletins configurável
 - [x] Campanha/banner configurável
 - [x] Modo de manutenção
-- [x] Integração com Google Calendar
 - [x] Calendário de datas comemorativas
 - [x] Playlist de mídia (imagens/vídeos) em loop
 - [x] TOTP (2FA) para superadmins

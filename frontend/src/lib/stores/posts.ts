@@ -6,8 +6,14 @@ export const postsLoading = writable(true);
 
 // Stores separados por seção
 export const postsCampanha  = writable<Post[]>([]);
-export const postsBoletim   = writable<Post[]>([]);
 export const postsDestaque  = writable<Post[]>([]);
+
+const VALID_TIPOS = new Set(['aviso', 'comunicado', 'evento', 'urgente', 'campanha', 'destaque']);
+const SLUG_RE = /^[a-z0-9-]+$/i;
+
+function filterString(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
 
 function buildFilter(extra = ''): string {
   return `ativo = true`
@@ -24,21 +30,28 @@ async function fetchSection(filter: string, sort = '-destaque,-created'): Promis
 export async function loadPosts(telaSlug?: string, filtroTipo?: string[]): Promise<void> {
   try {
     let extra = '';
-    if (telaSlug) extra += `(somente_telas = "" || somente_telas ~ "${telaSlug}")`;
+    if (telaSlug) {
+      if (!SLUG_RE.test(telaSlug)) {
+        posts.set([]);
+        return;
+      }
+      extra += `(somente_telas = "" || somente_telas ~ "${filterString(telaSlug)}")`;
+    }
     if (filtroTipo?.length) {
-      const tiposFilter = filtroTipo.map(t => `tipo = "${t}"`).join(' || ');
-      extra += (extra ? ' && ' : '') + `(${tiposFilter})`;
+      const tiposFilter = filtroTipo
+        .filter((t) => VALID_TIPOS.has(t))
+        .map((t) => `tipo = "${filterString(t)}"`)
+        .join(' || ');
+      if (tiposFilter) extra += (extra ? ' && ' : '') + `(${tiposFilter})`;
     }
 
-    const [campanha, boletim, destaque, outros] = await Promise.all([
+    const [campanha, destaque, outros] = await Promise.all([
       fetchSection(buildFilter(`tipo = "campanha"`)),
-      fetchSection(buildFilter(`tipo = "boletim"`), 'created'),
       fetchSection(buildFilter(`tipo = "destaque"`)),
-      fetchSection(buildFilter(`tipo != "campanha" && tipo != "boletim" && tipo != "destaque"` + (extra ? ` && ${extra}` : '')))
+      fetchSection(buildFilter(`tipo != "campanha" && tipo != "destaque"` + (extra ? ` && ${extra}` : '')))
     ]);
 
     postsCampanha.set(campanha);
-    postsBoletim.set(boletim);
     postsDestaque.set(destaque);
     posts.set(outros);
   } catch (e) {
@@ -64,6 +77,5 @@ export const TIPO_CONFIG: Record<Post['tipo'], { label: string; color: string; b
   evento:      { label: 'Evento',      color: 'text-green-300',  bg: 'bg-green-500/20 border-green-500/40' },
   urgente:     { label: 'URGENTE',     color: 'text-red-300',    bg: 'bg-red-500/20 border-red-500/40' },
   campanha:    { label: 'Campanha',    color: 'text-purple-300', bg: 'bg-purple-500/20 border-purple-500/40' },
-  destaque:    { label: 'Destaque',   color: 'text-amber-300',  bg: 'bg-amber-500/20 border-amber-500/40' },
-  boletim:     { label: 'Boletim',    color: 'text-cyan-300',   bg: 'bg-cyan-500/20 border-cyan-500/40' }
+  destaque:    { label: 'Destaque',   color: 'text-amber-300',  bg: 'bg-amber-500/20 border-amber-500/40' }
 };

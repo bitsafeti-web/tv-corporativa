@@ -7,7 +7,6 @@ Sistema de **TV Corporativa** para exibição interna da Bitsafe. Substitui uma 
 A tela fica aberta em fullscreen num navegador (modo kiosk) numa TV da empresa e exibe:
 - Relógio em tempo real com fuso horário
 - Data completa em português
-- Clima (temperatura, descrição, umidade, vento)
 - Feed rotativo de comunicados/avisos postados pelo time
 
 ---
@@ -19,7 +18,6 @@ A tela fica aberta em fullscreen num navegador (modo kiosk) numa TV da empresa e
 | Frontend (TV) | SvelteKit + Tailwind CSS | Leve, reativo, perfeito para displays 24/7 |
 | Backend + Admin | PocketBase | Painel admin embutido, tempo real nativo, SQLite |
 | Banco de dados | SQLite (via PocketBase) | Simples, histórico completo, zero config |
-| Clima | OpenWeatherMap API (gratuita) | Integração direta no frontend |
 | Tempo real | PocketBase Realtime (SSE) | TV atualiza sozinha sem F5 |
 
 ---
@@ -32,7 +30,7 @@ tv-corporativa/
 ├── README.md                   ← instruções de setup
 ├── frontend/                   ← SvelteKit (tela da TV)
 │   ├── dev.bat                 ← script para rodar em dev no Windows
-│   ├── .env                    ← variáveis de ambiente (API key clima, URL PocketBase)
+│   ├── .env                    ← variáveis de ambiente (URL PocketBase)
 │   ├── .env.example            ← template do .env
 │   ├── package.json
 │   ├── svelte.config.js
@@ -52,11 +50,9 @@ tv-corporativa/
 │           ├── components/
 │           │   ├── Clock.svelte        ← relógio HH:MM:SS reativo
 │           │   ├── DateDisplay.svelte  ← data em pt-BR
-│           │   ├── Weather.svelte      ← clima com ícones emoji
 │           │   └── PostsFeed.svelte    ← feed rotativo de posts (8s por post)
 │           └── stores/
 │               ├── clock.ts    ← store readable que atualiza a cada 1s
-│               ├── weather.ts  ← fetch clima a cada 10min, store writable
 │               └── posts.ts    ← carrega posts do PocketBase + subscribe realtime
 └── backend/
     ├── start.bat               ← inicia o PocketBase no Windows
@@ -99,7 +95,7 @@ cd frontend
 ./dev.bat
 # Ou manualmente:
 # set NODE_ENV=development && npm run dev
-# Acesse: http://localhost:5173
+# Acesse: http://localhost:5174
 ```
 
 > **Atenção:** A máquina de desenvolvimento tem `NODE_ENV=production` definido globalmente.
@@ -112,12 +108,6 @@ cd frontend
 
 ```env
 PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090
-PUBLIC_WEATHER_API_KEY=sua_chave_aqui
-PUBLIC_WEATHER_CITY=São Paulo
-PUBLIC_WEATHER_COUNTRY=BR
-```
-
-Chave gratuita da OpenWeatherMap: https://openweathermap.org/api
 
 ---
 
@@ -138,7 +128,6 @@ Chave gratuita da OpenWeatherMap: https://openweathermap.org/api
 
 - [x] Relógio em tempo real (atualiza a cada 1 segundo)
 - [x] Data completa em pt-BR com dia da semana
-- [x] Clima com ícones emoji, temperatura, umidade e vento
 - [x] Feed rotativo de comunicados (8s por post)
 - [x] 4 tipos de post com cores distintas
 - [x] Posts em destaque (aparecem primeiro)
@@ -150,9 +139,7 @@ Chave gratuita da OpenWeatherMap: https://openweathermap.org/api
 - [x] Configurações da empresa editáveis pelo painel (collection `configuracoes`)
 - [x] Agendamento de posts (`publica_em` — só aparece a partir da data definida)
 - [x] Modo de manutenção (ativa via painel, exibe tela `Maintenance.svelte`)
-- [x] Ticker/marquee de notícias na parte inferior (configurável pelo painel)
 - [x] Suporte a múltiplas telas/locais (rota `/tela/[slug]`, collection `telas` com filtro por tipo)
-- [x] Integração com Google Calendar (eventos públicos via API, requer `google_api_key` + `google_calendar_id` na config)
 - [x] Playlist de vídeos/imagens em loop (collection `midia`, exibe quando não há posts ativos)
 
 ---
@@ -170,8 +157,6 @@ Chave gratuita da OpenWeatherMap: https://openweathermap.org/api
 - Configurações da empresa via PocketBase (`configuracoes` collection)
 - Agendamento de posts com campo `publica_em`
 - Modo de manutenção com overlay fullscreen
-- Ticker/marquee configurável via painel
 - Múltiplas telas via rota `/tela/[slug]` com filtros por tipo de post
-- Google Calendar: eventos de calendário público na sidebar
 - Playlist de mídia (imagens/vídeos) exibida quando não há posts ativos
 - Posts filtrados por tela via campo `somente_telas`

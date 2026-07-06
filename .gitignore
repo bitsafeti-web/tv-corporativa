@@ -11,10 +11,14 @@ frontend/.env
 frontend/.env.development
 frontend/.env.production
 
-# RSS Boletins — estado e credenciais locais
+# Arquivos locais legados com credenciais/estado
 backend/.env.rss
 backend/.rss_state.json
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs e cache de execução local
+*.log
+__pycache__/

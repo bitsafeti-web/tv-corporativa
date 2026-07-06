@@ -30,5 +30,8 @@
     "pocketbase": "^0.26.8",
     "qrcode": "^1.5.4"
   },
+  "overrides": {
+    "cookie": "^0.7.2"
+  },
   "type": "module"
 }

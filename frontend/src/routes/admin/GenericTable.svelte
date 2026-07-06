@@ -31,7 +31,7 @@
 
   $: totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   $: paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
-  $: allSelected = paginated.length > 0 && paginated.every(i => selected.has(i.id));
+  $: allSelected = filtered.length > 0 && filtered.every(i => selected.has(i.id));
 
   // Reset page when search changes
   $: if (search) page = 1;
@@ -39,11 +39,11 @@
   function toggleAll() {
     if (allSelected) {
       const s = new Set(selected);
-      paginated.forEach(i => s.delete(i.id));
+      filtered.forEach(i => s.delete(i.id));
       selected = s;
     } else {
       const s = new Set(selected);
-      paginated.forEach(i => s.add(i.id));
+      filtered.forEach(i => s.add(i.id));
       selected = s;
     }
   }
@@ -63,7 +63,6 @@
     urgente:    '#ef4444',
     campanha:   '#a855f7',
     destaque:   '#f97316',
-    boletim:    '#64748b',
     imagem:     '#0369a1',
     video:      '#7c3aed',
   };
@@ -72,6 +71,12 @@
     const filename = item[col.key];
     if (!filename) return '';
     return `${pbUrl}/api/files/${item.collectionId}/${item.id}/${filename}`;
+  }
+
+  function isExpired(item: any): boolean {
+    if (!item.expira_em) return false;
+    const date = new Date(String(item.expira_em).replace(' ', 'T'));
+    return !isNaN(date.getTime()) && date < new Date();
   }
 </script>
 
@@ -90,7 +95,7 @@
           on:click={() => { dispatch('bulkDelete', { ids: [...selected] }); selected = new Set(); }}
           style="font-size:12px;background:rgba(239,68,68,0.08);color:#ef4444;padding:5px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600;white-space:nowrap;"
         >
-          Excluir selecionados ({selected.size})
+          {allSelected ? 'Excluir tudo' : 'Excluir selecionados'} ({selected.size})
         </button>
       {/if}
     </div>
@@ -154,13 +159,16 @@
                     <span style="font-size:12px;color:#9ca3af;">—</span>
                   {/if}
                 {:else if col.toggle}
+                  {@const expired = col.key === 'ativo' && isExpired(item)}
                   <button
-                    on:click={() => dispatch('toggle', { id: item.id, field: col.key, current: item[col.key] })}
-                    style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
-                      background:{item[col.key] ? '#dcfce7' : '#f1f5f9'};
-                      color:{item[col.key] ? '#16a34a' : '#94a3b8'};"
+                    on:click={() => !expired && dispatch('toggle', { id: item.id, field: col.key, current: item[col.key] })}
+                    disabled={expired}
+                    style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px;border:none;display:inline-flex;align-items:center;justify-content:center;
+                      cursor:{expired ? 'default' : 'pointer'};
+                      background:{expired ? '#fee2e2' : (item[col.key] ? '#dcfce7' : '#f1f5f9')};
+                      color:{expired ? '#dc2626' : (item[col.key] ? '#16a34a' : '#94a3b8')};"
                   >
-                    {item[col.key] ? 'Ativo' : 'Inativo'}
+                    {expired ? 'Expirado' : (item[col.key] ? 'Ativo' : 'Inativo')}
                   </button>
                 {:else if col.badge}
                   <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;

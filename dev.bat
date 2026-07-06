@@ -26,7 +26,7 @@ echo.
 
 REM ── 2. Iniciar PocketBase ──────────────────────────────────
 echo [2/3] Iniciando PocketBase (banco local)...
-start "PocketBase - Dev" cmd /k "cd /d %~dp0backend && pocketbase.exe serve --http=127.0.0.1:8090 && pause"
+start "PocketBase - Dev" cmd /k "cd /d %~dp0backend && set RECAPTCHA_BYPASS=true && pocketbase.exe serve --http=127.0.0.1:8090 && pause"
 timeout /t 2 /nobreak >nul
 echo       OK - http://127.0.0.1:8090/_/
 echo.
@@ -35,14 +35,14 @@ REM ── 3. Iniciar Frontend ────────────────�
 echo [3/3] Iniciando Frontend SvelteKit...
 start "Frontend - Dev" cmd /k "cd /d %~dp0frontend && powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\" && set NODE_ENV=development && npm run dev && pause"
 timeout /t 3 /nobreak >nul
-echo       OK - http://localhost:5173
+echo       OK - http://localhost:5174
 echo.
 
 echo  =============================================
 echo   TUDO PRONTO!
 echo.
-echo   Painel admin : http://localhost:5173/admin
-echo   Tela TV      : http://localhost:5173/tv
+echo   Painel admin : http://localhost:5174/admin
+echo   Tela TV      : http://localhost:5174/tv
 echo   PocketBase   : http://127.0.0.1:8090/_/
 echo  =============================================
 echo.
